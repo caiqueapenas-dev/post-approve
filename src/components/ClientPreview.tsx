@@ -39,7 +39,21 @@ export const ClientPreview = () => {
       fetchClientData();
     }
   }, [linkId]);
+  // Bloqueia a rolagem do body quando um modal está aberto
+  useEffect(() => {
+    const isModalOpen = !!selectedPost || showDateModal || showLeaveModal;
 
+    if (isModalOpen) {
+      document.body.classList.add("overflow-hidden");
+    } else {
+      document.body.classList.remove("overflow-hidden");
+    }
+
+    // Cleanup: Remove a classe ao desmontar o componente
+    return () => {
+      document.body.classList.remove("overflow-hidden");
+    };
+  }, [selectedPost, showDateModal, showLeaveModal]);
   const fetchClientData = async () => {
     const { data: clientData } = await supabase
       .from("clients")
@@ -438,7 +452,7 @@ export const ClientPreview = () => {
 
       {showChangeRequest && selectedPost && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-gray-900">
                 Solicitar alterações
@@ -508,10 +522,7 @@ export const ClientPreview = () => {
           className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50 overflow-auto"
           onClick={() => setSelectedPost(null)}
         >
-          <div
-            className="max-w-2xl w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <div className="bg-white rounded-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
               {selectedPost.images && selectedPost.images.length > 0 && (
                 <div className="max-h-[60vh] overflow-hidden">
@@ -569,7 +580,7 @@ export const ClientPreview = () => {
           onClick={() => setShowDateModal(false)}
         >
           <div
-            className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-auto"
+            className="bg-white rounded-2xl max-w-sm w-full max-h-[80vh] overflow-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6">
@@ -638,7 +649,7 @@ export const ClientPreview = () => {
           onClick={() => setShowDateModal(false)}
         >
           <div
-            className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-auto"
+            className="bg-white rounded-2xl max-w-sm w-full max-h-[80vh] overflow-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 sticky top-0 bg-white border-b border-gray-200">
