@@ -156,7 +156,13 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
       }
     }
 
-    setImages((prev) => [...prev, ...newImages]);
+    setImages((prev) => {
+      const updatedImages = [...prev, ...newImages];
+      if (updatedImages.length > 1) {
+        setPostType("carousel");
+      }
+      return updatedImages;
+    });
     e.target.value = "";
     setCompressLoading(false);
   };

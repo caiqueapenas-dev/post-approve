@@ -23,11 +23,13 @@ export const PostCarousel = ({ images }: PostCarouselProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+  const [isSliding, setIsSliding] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const sortedImages = [...images].sort((a, b) => a.position - b.position);
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (isSliding) return;
     const touchX = e.targetTouches[0].clientX;
     setTouchStart(touchX);
     setTouchEnd(touchX);
@@ -38,16 +40,18 @@ export const PostCarousel = ({ images }: PostCarouselProps) => {
   };
 
   const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
+    if (!touchStart || !touchEnd || isSliding) return;
 
     const distance = touchStart - touchEnd;
     const threshold = 50;
 
     if (distance >= threshold && currentIndex < sortedImages.length - 1) {
+      setIsSliding(true);
       setCurrentIndex(currentIndex + 1);
     }
 
     if (distance <= -threshold && currentIndex > 0) {
+      setIsSliding(true);
       setCurrentIndex(currentIndex - 1);
     }
 
@@ -61,8 +65,15 @@ export const PostCarousel = ({ images }: PostCarouselProps) => {
         left: currentIndex * scrollRef.current.clientWidth,
         behavior: "smooth",
       });
+
+      // Aguarda a animação 'smooth' (aprox. 300ms) e libera o bloqueio
+      const timer = setTimeout(() => {
+        setIsSliding(false);
+      }, 400); // 400ms para garantir que a animação terminou
+
+      return () => clearTimeout(timer);
     }
-  }, [currentIndex]);
+  }, [currentIndex]); // O isSliding não deve estar aqui para o reset funcionar
 
   const aspectRatioClass = getAspectRatioClass(sortedImages[0]?.crop_format);
 
