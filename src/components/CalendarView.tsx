@@ -5,11 +5,16 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 type CalendarViewProps = {
   posts: Post[];
   onPostClick: (post: Post) => void;
+  onDateClick?: (date: Date, posts: Post[]) => void;
 };
 
 type ViewMode = "weekly" | "monthly";
 
-export const CalendarView = ({ posts, onPostClick }: CalendarViewProps) => {
+export const CalendarView = ({
+  posts,
+  onPostClick,
+  onDateClick,
+}: CalendarViewProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>("weekly");
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -263,9 +268,19 @@ export const CalendarView = ({ posts, onPostClick }: CalendarViewProps) => {
           {dates.map((date) => {
             const dayPosts = getPostsForDate(date);
             return (
-              <div
+              <button
+                type="button"
                 key={date.toISOString()}
-                className={`min-h-[100px] p-2 rounded-lg border ${
+                onClick={() =>
+                  onDateClick && dayPosts.length > 0
+                    ? onDateClick(date, dayPosts)
+                    : undefined
+                }
+                className={`min-h-[100px] p-2 rounded-lg border text-left ${
+                  onDateClick && dayPosts.length > 0
+                    ? "cursor-pointer hover:bg-gray-100 transition-colors"
+                    : ""
+                } ${
                   !isCurrentMonth(date)
                     ? "bg-gray-50 border-gray-100"
                     : isToday(date)
@@ -287,11 +302,30 @@ export const CalendarView = ({ posts, onPostClick }: CalendarViewProps) => {
                 {dayPosts.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {dayPosts.slice(0, 3).map((post) => (
-                      <button
+                      <div
                         key={post.id}
-                        onClick={() => onPostClick(post)}
-                        className="w-2 h-2 rounded-full bg-gray-900 hover:scale-125 transition-transform"
-                        title={post.client?.name}
+                        onClick={(e) => {
+                          if (!onDateClick) {
+                            // Admin view behavior
+                            e.stopPropagation();
+                            onPostClick(post);
+                          }
+                        }}
+                        className={`w-2 h-2 rounded-full bg-gray-900 ${
+                          !onDateClick
+                            ? "hover:scale-125 transition-transform cursor-pointer"
+                            : ""
+                        }`}
+                        title={
+                          post.client?.name ||
+                          new Date(post.scheduled_date).toLocaleTimeString(
+                            "pt-BR",
+                            {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }
+                          )
+                        }
                       />
                     ))}
                     {dayPosts.length > 3 && (
@@ -301,7 +335,7 @@ export const CalendarView = ({ posts, onPostClick }: CalendarViewProps) => {
                     )}
                   </div>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>

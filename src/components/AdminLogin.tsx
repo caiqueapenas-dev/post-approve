@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { LogIn } from "lucide-react";
+import { CheckSquare } from "lucide-react";
 
 export const AdminLogin = () => {
   const [email, setEmail] = useState("");
@@ -29,7 +29,7 @@ export const AdminLogin = () => {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="flex items-center justify-center mb-8">
             <div className="w-12 h-12 bg-gray-900 rounded-xl flex items-center justify-center">
-              <LogIn className="w-6 h-6 text-white" />
+              <CheckSquare className="w-6 h-6 text-white" />
             </div>
           </div>
 

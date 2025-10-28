@@ -11,6 +11,7 @@ import {
   X,
   AlertCircle,
   Clock,
+  ChevronDown,
 } from "lucide-react";
 
 export const ClientPreview = () => {
@@ -25,6 +26,9 @@ export const ClientPreview = () => {
   >("visual");
   const [changeMessage, setChangeMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showApproved, setShowApproved] = useState(false);
+  const [selectedDatePosts, setSelectedDatePosts] = useState<Post[]>([]);
+  const [showDateModal, setShowDateModal] = useState(false);
 
   useEffect(() => {
     if (linkId) {
@@ -70,6 +74,11 @@ export const ClientPreview = () => {
     await fetchClientData();
     setSelectedPost(null);
     setLoading(false);
+  };
+
+  const handleDateClick = (date: Date, posts: Post[]) => {
+    setSelectedDatePosts(posts);
+    setShowDateModal(true);
   };
 
   const handleChangeRequest = async (e: React.FormEvent) => {
@@ -165,6 +174,13 @@ export const ClientPreview = () => {
     );
   };
 
+  const pendingPosts = posts.filter(
+    (post) => post.status === "pending" || post.status === "change_requested"
+  );
+  const approvedPosts = posts.filter(
+    (post) => post.status === "approved" || post.status === "published"
+  );
+
   if (!client) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -219,11 +235,15 @@ export const ClientPreview = () => {
 
         {viewMode === "calendar" ? (
           <div className="bg-white rounded-xl p-6 shadow-sm">
-            <CalendarView posts={posts} onPostClick={setSelectedPost} />
+            <CalendarView
+              posts={posts}
+              onPostClick={setSelectedPost}
+              onDateClick={handleDateClick}
+            />
           </div>
         ) : (
           <div className="space-y-4">
-            {posts.map((post) => {
+            {pendingPosts.map((post) => {
               const dateInfo = formatDate(post.scheduled_date);
               return (
                 <div
@@ -308,9 +328,75 @@ export const ClientPreview = () => {
               );
             })}
 
-            {posts.length === 0 && (
+            {pendingPosts.length === 0 && posts.length === 0 && (
               <div className="bg-white rounded-xl p-12 text-center">
                 <p className="text-gray-600">Nenhum post agendado ainda.</p>
+              </div>
+            )}
+
+            {pendingPosts.length === 0 && posts.length > 0 && (
+              <div className="bg-white rounded-xl p-12 text-center">
+                <p className="text-gray-600">Nenhum post pendente.</p>
+              </div>
+            )}
+
+            {approvedPosts.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <button
+                  onClick={() => setShowApproved((prev) => !prev)}
+                  className="flex items-center justify-between w-full p-6 text-left"
+                >
+                  <h3 className="text-lg font-bold text-gray-900">
+                    Aprovados ({approvedPosts.length})
+                  </h3>
+                  <ChevronDown
+                    className={`w-5 h-5 transition-transform ${
+                      showApproved ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                {showApproved && (
+                  <div className="space-y-4 p-6 border-t border-gray-100">
+                    {approvedPosts.map((post) => {
+                      const dateInfo = formatDate(post.scheduled_date);
+                      return (
+                        <div
+                          key={post.id}
+                          className="pb-4 border-b border-gray-100 last:border-b-0"
+                        >
+                          {post.images && post.images.length > 0 && (
+                            <PostCarousel images={post.images} />
+                          )}
+                          <div className="p-4 space-y-3">
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="w-4 h-4 text-gray-600" />
+                                  <span className="text-sm font-medium text-gray-900">
+                                    {dateInfo.date} - {dateInfo.day}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {getStatusBadge(post.status)}
+                                  <span className="text-sm text-gray-600 capitalize">
+                                    {post.post_type}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            {post.caption && (
+                              <div className="bg-gray-50 rounded-lg p-4">
+                                <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                  {post.caption}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -436,6 +522,154 @@ export const ClientPreview = () => {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Múltiplos Posts por Dia */}
+      {showDateModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={() => setShowDateModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Posts de{" "}
+                  {selectedDatePosts.length > 0
+                    ? formatDate(
+                        selectedDatePosts[0].scheduled_date
+                      ).date.split(" ")[0]
+                    : ""}
+                </h3>
+                <button
+                  onClick={() => setShowDateModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                {selectedDatePosts.map((post) => (
+                  <div
+                    key={post.id}
+                    className="border border-gray-200 rounded-lg overflow-hidden"
+                  >
+                    {post.images && post.images.length > 0 && (
+                      <PostCarousel images={post.images} />
+                    )}
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        {getStatusBadge(post.status)}
+                        <span className="text-sm text-gray-600 capitalize">
+                          {post.post_type}
+                        </span>
+                      </div>
+                      {post.caption && (
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap line-clamp-3">
+                            {post.caption}
+                          </p>
+                        </div>
+                      )}
+                      {post.status === "pending" && (
+                        <button
+                          onClick={() => {
+                            setShowDateModal(false);
+                            setSelectedPost(post);
+                          }}
+                          className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-2.5 rounded-lg font-medium hover:bg-gray-800 transition-colors"
+                        >
+                          Ver e Aprovar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal de Posts do Dia (Calendário) */}
+      {showDateModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50"
+          onClick={() => setShowDateModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 sticky top-0 bg-white border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Posts do dia{" "}
+                  {selectedDatePosts.length > 0 &&
+                    formatDate(selectedDatePosts[0].scheduled_date).date}
+                </h3>
+                <button
+                  onClick={() => setShowDateModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="space-y-4 p-6">
+              {selectedDatePosts.map((post) => (
+                <div
+                  key={post.id}
+                  className="border border-gray-200 rounded-xl overflow-hidden"
+                >
+                  {post.images && post.images.length > 0 && (
+                    <PostCarousel images={post.images} />
+                  )}
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(post.status)}
+                      <span className="text-sm text-gray-600 capitalize">
+                        {post.post_type}
+                      </span>
+                    </div>
+                    {post.caption && (
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                          {post.caption}
+                        </p>
+                      </div>
+                    )}
+                    {post.status === "pending" && (
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleApprove(post.id)}
+                          disabled={loading}
+                          className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white py-2 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 text-sm"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          Aprovar
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedPost(post);
+                            setShowDateModal(false);
+                            setShowChangeRequest(true);
+                          }}
+                          className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors text-sm"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          Alterar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

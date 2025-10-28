@@ -1,10 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+  throw new Error("Missing Supabase environment variables");
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -12,13 +12,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export type Client = {
   id: string;
   name: string;
+  display_name: string | null;
+  avatar_url: string | null;
   unique_link_id: string;
   created_at: string;
   updated_at: string;
 };
 
-export type PostType = 'feed' | 'carousel' | 'story' | 'reels';
-export type PostStatus = 'pending' | 'change_requested' | 'approved' | 'published';
+export type PostType = "feed" | "carousel" | "story" | "reels";
+export type PostStatus =
+  | "pending"
+  | "change_requested"
+  | "approved"
+  | "published";
 
 export type Post = {
   id: string;
@@ -34,7 +40,7 @@ export type Post = {
   change_requests?: ChangeRequest[];
 };
 
-export type CropFormat = '1:1' | '4:5' | '9:16';
+export type CropFormat = "1:1" | "4:5" | "9:16";
 
 export type PostImage = {
   id: string;
@@ -46,7 +52,7 @@ export type PostImage = {
   created_at: string;
 };
 
-export type RequestType = 'visual' | 'date' | 'caption' | 'other';
+export type RequestType = "visual" | "date" | "caption" | "other";
 
 export type ChangeRequest = {
   id: string;

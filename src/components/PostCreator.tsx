@@ -8,6 +8,8 @@ import {
   GripVertical,
   Calendar,
   Image as ImageIcon,
+  UploadCloud,
+  Loader2,
 } from "lucide-react";
 
 type ImageData = {
@@ -24,7 +26,9 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
   const [scheduledDate, setScheduledDate] = useState("");
   const [caption, setCaption] = useState("");
   const [images, setImages] = useState<ImageData[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [compressLoading, setCompressLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [cropImage, setCropImage] = useState<{
     tempId: string;
     preview: string;
@@ -40,24 +44,103 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
     const { data } = await supabase.from("clients").select("*").order("name");
     if (data) setClients(data);
   };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-
-    files.forEach((file) => {
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
       const reader = new FileReader();
-      reader.onload = (event) => {
-        const preview = event.target?.result as string;
-        const tempId = Math.random().toString(36);
-        setImages((prev) => [
-          ...prev,
-          { file, preview, cropFormat: "1:1", tempId },
-        ]);
+
+      reader.onload = (e) => {
+        img.src = e.target?.result as string;
       };
+
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        // Define uma dimensão máxima para a imagem (ex: 1920px)
+        const MAX_DIM = 1920;
+        let { width, height } = img;
+
+        if (width > height) {
+          if (width > MAX_DIM) {
+            height = (height * MAX_DIM) / width;
+            width = MAX_DIM;
+          }
+        } else {
+          if (height > MAX_DIM) {
+            width = (width * MAX_DIM) / height;
+            height = MAX_DIM;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // Comprime como JPEG com 80% de qualidade
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: "image/jpeg",
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              reject(new Error("Canvas to Blob failed"));
+            }
+          },
+          "image/jpeg",
+          0.8 // 80% de qualidade
+        );
+      };
+
+      img.onerror = (err) => reject(err);
+      reader.onerror = (err) => reject(err);
       reader.readAsDataURL(file);
     });
+  };
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
+    setCompressLoading(true);
+
+    const newImages: ImageData[] = [];
+
+    for (const file of files) {
+      // Ignora se não for imagem
+      if (!file.type.startsWith("image/")) continue;
+
+      try {
+        const compressedFile = await compressImage(file);
+
+        // Gera o preview a partir do arquivo comprimido
+        const preview = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (event) => resolve(event.target?.result as string);
+          reader.onerror = (err) => reject(err);
+          reader.readAsDataURL(compressedFile);
+        });
+
+        newImages.push({
+          file: compressedFile,
+          preview,
+          cropFormat: "4:5", // Já atualizado na Etapa 2, mas mantemos
+          tempId: Math.random().toString(36),
+        });
+      } catch (err) {
+        console.error("Failed to compress or read image:", err);
+        alert(
+          `Failed to process ${file.name}. It might be corrupted or not an image.`
+        );
+      }
+    }
+
+    setImages((prev) => [...prev, ...newImages]);
     e.target.value = "";
+    setCompressLoading(false);
   };
 
   const handleCrop = (
@@ -112,7 +195,8 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
     e.preventDefault();
     if (!selectedClientId || images.length === 0) return;
 
-    setLoading(true);
+    setSubmitLoading(true);
+    setUploadProgress(0); // Inicia o progresso
 
     try {
       const { data: post, error: postError } = await supabase
@@ -131,6 +215,9 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
 
       if (postError) throw postError;
 
+      // 5% pela criação do post
+      setUploadProgress(5);
+
       for (let i = 0; i < images.length; i++) {
         const image = images[i];
         const { url, publicId } = await uploadToCloudinary(image.file);
@@ -144,7 +231,14 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
             position: i,
           },
         ]);
+
+        // Atualiza o progresso (95% restantes divididos pelo N de imagens)
+        const progressChunk = 95 / images.length;
+        setUploadProgress((prev) => (prev || 5) + progressChunk);
       }
+
+      // Pequeno delay para o usuário ver os 100%
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       setSelectedClientId("");
       setPostType("feed");
@@ -152,11 +246,15 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
       setCaption("");
       setImages([]);
       onSuccess();
+
+      // Reseta o estado
+      setSubmitLoading(false);
+      setUploadProgress(null);
     } catch (error) {
       console.error("Error creating post:", error);
       alert("Failed to create post. Please try again.");
-    } finally {
-      setLoading(false);
+      setSubmitLoading(false);
+      setUploadProgress(null);
     }
   };
 
@@ -217,11 +315,15 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label
+            htmlFor="scheduledDateInput"
+            className="block text-sm font-medium text-gray-700 mb-2 cursor-pointer"
+          >
             <Calendar className="w-4 h-4 inline mr-1" />
             Scheduled Date
           </label>
           <input
+            id="scheduledDateInput"
             type="datetime-local"
             value={scheduledDate}
             onChange={(e) => setScheduledDate(e.target.value)}
@@ -324,30 +426,63 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
             ))}
 
             {canAddMore && (
-              <label className="flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-all">
-                <Plus className="w-5 h-5 text-gray-400" />
-                <span className="text-sm font-medium text-gray-600">
-                  Add Image
-                </span>
+              <label
+                className={`flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-lg p-6 transition-all ${
+                  compressLoading
+                    ? "cursor-wait bg-gray-50"
+                    : "cursor-pointer hover:border-gray-400 hover:bg-gray-50"
+                }`}
+              >
+                {compressLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                    <span className="text-sm font-medium text-gray-600">
+                      Comprimindo...
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-5 h-5 text-gray-400" />
+                    <span className="text-sm font-medium text-gray-600">
+                      Add Image
+                    </span>
+                  </>
+                )}
                 <input
                   type="file"
                   accept="image/*"
                   multiple={postType === "carousel"}
                   onChange={handleFileSelect}
                   className="hidden"
+                  disabled={compressLoading}
                 />
               </label>
             )}
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={loading || images.length === 0}
-          className="w-full bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? "Creating Post..." : "Create Post"}
-        </button>
+        {uploadProgress !== null ? (
+          <div className="space-y-3 pt-3">
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div
+                className="bg-gray-900 h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              ></div>
+            </div>
+            <div className="flex items-center justify-center gap-2 text-sm font-medium text-gray-700">
+              <UploadCloud className="w-4 h-4" />
+              <span>Enviando imagens... {Math.round(uploadProgress)}%</span>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="submit"
+            disabled={submitLoading || compressLoading || images.length === 0}
+            className="w-full bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitLoading ? "Criando Post..." : "Create Post"}
+          </button>
+        )}
       </form>
 
       {cropImage && (

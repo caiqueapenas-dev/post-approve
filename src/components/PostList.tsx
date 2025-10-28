@@ -128,7 +128,8 @@ export const PostList = ({ refresh }: { refresh: number }) => {
           return (
             <div
               key={post.id}
-              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative"
+              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative cursor-pointer"
+              onClick={() => setSelectedPost(post)}
             >
               <div className="flex gap-6">
                 <div className="flex-shrink-0">
@@ -155,16 +156,14 @@ export const PostList = ({ refresh }: { refresh: number }) => {
                       </div>
                     </div>
                     <div className="flex items-center">
+                      {/* O botão de editar foi removido, o card agora é clicável */}
                       <button
-                        onClick={() => setSelectedPost(post)}
-                        className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-                        title="Editar Post"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => deletePost(post.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deletePost(post.id);
+                        }}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Deletar Post"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

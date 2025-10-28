@@ -1,12 +1,33 @@
-import { useState, useEffect } from 'react';
-import { supabase, Client } from '../lib/supabase';
-import { Plus, Users, Link as LinkIcon, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef } from "react";
+import { supabase, Client } from "../lib/supabase";
+import { uploadToCloudinary } from "../lib/cloudinary";
+import {
+  Plus,
+  Users,
+  Link as LinkIcon,
+  Trash2,
+  User,
+  Image as ImageIcon,
+  X,
+} from "lucide-react";
 
 export const ClientManager = () => {
   const [clients, setClients] = useState<Client[]>([]);
-  const [showModal, setShowModal] = useState(false);
-  const [newClientName, setNewClientName] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState<Client | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Estados para criação
+  const [newClientName, setNewClientName] = useState("");
+
+  // Estados para edição
+  const [editName, setEditName] = useState("");
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [editAvatar, setEditAvatar] = useState<File | null>(null);
+  const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(
+    null
+  );
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchClients();
@@ -14,15 +35,18 @@ export const ClientManager = () => {
 
   const fetchClients = async () => {
     const { data } = await supabase
-      .from('clients')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .from("clients")
+      .select("*")
+      .order("created_at", { ascending: false });
 
     if (data) setClients(data);
   };
 
   const generateUniqueId = () => {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    return (
+      Math.random().toString(36).substring(2, 15) +
+      Math.random().toString(36).substring(2, 15)
+    );
   };
 
   const createClient = async (e: React.FormEvent) => {
@@ -30,29 +54,83 @@ export const ClientManager = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('clients')
-        .insert([{
+      const { error } = await supabase.from("clients").insert([
+        {
           name: newClientName,
           unique_link_id: generateUniqueId(),
-        }]);
+        },
+      ]);
 
       if (error) throw error;
 
-      setNewClientName('');
-      setShowModal(false);
+      setNewClientName("");
+      setShowCreateModal(false);
       fetchClients();
     } catch (error) {
-      console.error('Error creating client:', error);
+      console.error("Error creating client:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenEditModal = (client: Client) => {
+    setEditName(client.name);
+    setEditDisplayName(client.display_name || "");
+    setEditAvatarPreview(client.avatar_url || null);
+    setEditAvatar(null);
+    setShowEditModal(client);
+  };
+
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEditAvatar(file);
+      setEditAvatarPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const updateClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showEditModal) return;
+
+    setLoading(true);
+
+    try {
+      let avatarUrl = showEditModal.avatar_url;
+
+      if (editAvatar) {
+        const { url } = await uploadToCloudinary(editAvatar);
+        avatarUrl = url;
+      } else if (editAvatarPreview === null) {
+        // Se a preview foi removida e não há avatar novo, remove do banco
+        avatarUrl = null;
+      }
+
+      const { error } = await supabase
+        .from("clients")
+        .update({
+          name: editName,
+          display_name: editDisplayName || editName, // Default para o nome interno
+          avatar_url: avatarUrl,
+        })
+        .eq("id", showEditModal.id);
+
+      if (error) throw error;
+
+      setShowEditModal(null);
+      fetchClients();
+    } catch (error) {
+      console.error("Error updating client:", error);
     } finally {
       setLoading(false);
     }
   };
 
   const deleteClient = async (id: string) => {
-    if (!confirm('Are you sure? This will delete all posts for this client.')) return;
+    if (!confirm("Are you sure? This will delete all posts for this client."))
+      return;
 
-    await supabase.from('clients').delete().eq('id', id);
+    await supabase.from("clients").delete().eq("id", id);
     fetchClients();
   };
 
@@ -69,7 +147,7 @@ export const ClientManager = () => {
           <h2 className="text-2xl font-bold text-gray-900">Clients</h2>
         </div>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => setShowCreateModal(true)}
           className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
         >
           <Plus className="w-4 h-4" />
@@ -79,38 +157,61 @@ export const ClientManager = () => {
 
       <div className="grid gap-4">
         {clients.map((client) => (
-          <div
+          <button
             key={client.id}
-            className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+            onClick={() => handleOpenEditModal(client)}
+            className="w-full text-left bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
           >
             <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {client.name}
-                </h3>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <LinkIcon className="w-4 h-4" />
-                  <code className="bg-gray-100 px-2 py-1 rounded">
-                    /client/{client.unique_link_id}
-                  </code>
+              <div className="flex-1 flex items-center gap-4">
+                {client.avatar_url ? (
+                  <img
+                    src={client.avatar_url}
+                    alt={client.name}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                    <User className="w-6 h-6 text-gray-400" />
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    {client.display_name || client.name}
+                  </h3>
+                  {client.display_name && (
+                    <p className="text-sm text-gray-500">{client.name}</p>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => copyLink(client.unique_link_id)}
-                  className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Copy Link
-                </button>
-                <button
-                  onClick={() => deleteClient(client.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <LinkIcon className="w-4 h-4" />
+                <code className="bg-gray-100 px-2 py-1 rounded">
+                  /client/{client.unique_link_id}
+                </code>
               </div>
             </div>
-          </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  copyLink(client.unique_link_id);
+                }}
+                className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Copy Link
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteClient(client.id);
+                }}
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </button>
         ))}
 
         {clients.length === 0 && (
@@ -120,14 +221,20 @@ export const ClientManager = () => {
         )}
       </div>
 
-      {showModal && (
+      {/* Modal de Criação */}
+      {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Add New Client</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              Add New Client
+            </h3>
             <form onSubmit={createClient} className="space-y-4">
               <div>
-                <label htmlFor="clientName" className="block text-sm font-medium text-gray-700 mb-2">
-                  Client Name
+                <label
+                  htmlFor="clientName"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Client Name (Internal)
                 </label>
                 <input
                   id="clientName"
@@ -144,7 +251,7 @@ export const ClientManager = () => {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => setShowCreateModal(false)}
                   className="flex-1 px-4 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   Cancel
@@ -154,7 +261,119 @@ export const ClientManager = () => {
                   disabled={loading}
                   className="flex-1 px-4 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
-                  {loading ? 'Creating...' : 'Create'}
+                  {loading ? "Creating..." : "Create"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Edição */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              Edit Client
+            </h3>
+            <form onSubmit={updateClient} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="avatar"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Avatar
+                </label>
+                <div className="flex items-center gap-4">
+                  {editAvatarPreview ? (
+                    <img
+                      src={editAvatarPreview}
+                      alt="Avatar preview"
+                      className="w-16 h-16 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+                      <ImageIcon className="w-8 h-8 text-gray-400" />
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarSelect}
+                    ref={fileInputRef}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+                  >
+                    Change
+                  </button>
+                  {editAvatarPreview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditAvatar(null);
+                        setEditAvatarPreview(null);
+                      }}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="editDisplayName"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Display Name (Client View)
+                </label>
+                <input
+                  id="editDisplayName"
+                  type="text"
+                  value={editDisplayName}
+                  onChange={(e) => setEditDisplayName(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
+                  placeholder="Client's preferred name"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="editName"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Internal Name
+                </label>
+                <input
+                  id="editName"
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
+                  placeholder="Internal name (e.g. Company)"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(null)}
+                  className="flex-1 px-4 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 px-4 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
+                >
+                  {loading ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>
