@@ -1,15 +1,20 @@
-import { useState, useRef, useEffect } from 'react';
-import { CropFormat } from '../lib/supabase';
-import { X } from 'lucide-react';
+import { useState, useRef, useEffect } from "react";
+import { CropFormat } from "../lib/supabase";
+import { X } from "lucide-react";
 
 type ImageCropperProps = {
   imageUrl: string;
-  onCrop: (croppedFile: File) => void;
+  onCrop: (croppedFile: File, format: CropFormat) => void;
   onCancel: () => void;
   initialFormat?: CropFormat;
 };
 
-export const ImageCropper = ({ imageUrl, onCrop, onCancel, initialFormat = '1:1' }: ImageCropperProps) => {
+export const ImageCropper = ({
+  imageUrl,
+  onCrop,
+  onCancel,
+  initialFormat = "1:1",
+}: ImageCropperProps) => {
   const [format, setFormat] = useState<CropFormat>(initialFormat);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -26,9 +31,12 @@ export const ImageCropper = ({ imageUrl, onCrop, onCancel, initialFormat = '1:1'
 
   const getAspectRatio = (cropFormat: CropFormat): number => {
     switch (cropFormat) {
-      case '1:1': return 1;
-      case '4:5': return 4 / 5;
-      case '9:16': return 9 / 16;
+      case "1:1":
+        return 1;
+      case "4:5":
+        return 4 / 5;
+      case "9:16":
+        return 9 / 16;
     }
   };
 
@@ -38,7 +46,7 @@ export const ImageCropper = ({ imageUrl, onCrop, onCancel, initialFormat = '1:1'
 
     if (!canvas || !img) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const aspectRatio = getAspectRatio(format);
@@ -59,7 +67,8 @@ export const ImageCropper = ({ imageUrl, onCrop, onCancel, initialFormat = '1:1'
     }
 
     const outputSize = 1080;
-    const outputHeight = format === '9:16' ? 1920 : format === '4:5' ? 1350 : 1080;
+    const outputHeight =
+      format === "9:16" ? 1920 : format === "4:5" ? 1350 : 1080;
 
     canvas.width = outputSize;
     canvas.height = outputHeight;
@@ -76,12 +85,18 @@ export const ImageCropper = ({ imageUrl, onCrop, onCancel, initialFormat = '1:1'
       outputHeight
     );
 
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const file = new File([blob], 'cropped-image.jpg', { type: 'image/jpeg' });
-        onCrop(file);
-      }
-    }, 'image/jpeg', 0.92);
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          const file = new File([blob], "cropped-image.jpg", {
+            type: "image/jpeg",
+          });
+          onCrop(file, format);
+        }
+      },
+      "image/jpeg",
+      0.92
+    );
   };
 
   return (
@@ -100,14 +115,14 @@ export const ImageCropper = ({ imageUrl, onCrop, onCancel, initialFormat = '1:1'
 
           <div className="space-y-4">
             <div className="flex gap-2">
-              {(['1:1', '4:5', '9:16'] as CropFormat[]).map((f) => (
+              {(["1:1", "4:5", "9:16"] as CropFormat[]).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFormat(f)}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     format === f
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? "bg-gray-900 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
                   {f}
@@ -119,9 +134,14 @@ export const ImageCropper = ({ imageUrl, onCrop, onCancel, initialFormat = '1:1'
               <div
                 className="relative"
                 style={{
-                  maxWidth: '100%',
-                  maxHeight: '60vh',
-                  aspectRatio: format === '1:1' ? '1/1' : format === '4:5' ? '4/5' : '9/16',
+                  maxWidth: "100%",
+                  maxHeight: "60vh",
+                  aspectRatio:
+                    format === "1:1"
+                      ? "1/1"
+                      : format === "4:5"
+                      ? "4/5"
+                      : "9/16",
                 }}
               >
                 <img

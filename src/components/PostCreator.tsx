@@ -1,8 +1,14 @@
-import { useState, useEffect } from 'react';
-import { supabase, Client, PostType, CropFormat } from '../lib/supabase';
-import { uploadToCloudinary } from '../lib/cloudinary';
-import { ImageCropper } from './ImageCropper';
-import { Plus, X, GripVertical, Calendar, Image as ImageIcon } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { supabase, Client, PostType, CropFormat } from "../lib/supabase";
+import { uploadToCloudinary } from "../lib/cloudinary";
+import { ImageCropper } from "./ImageCropper";
+import {
+  Plus,
+  X,
+  GripVertical,
+  Calendar,
+  Image as ImageIcon,
+} from "lucide-react";
 
 type ImageData = {
   file: File;
@@ -13,21 +19,25 @@ type ImageData = {
 
 export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
   const [clients, setClients] = useState<Client[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState('');
-  const [postType, setPostType] = useState<PostType>('feed');
-  const [scheduledDate, setScheduledDate] = useState('');
-  const [caption, setCaption] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [postType, setPostType] = useState<PostType>("feed");
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [caption, setCaption] = useState("");
   const [images, setImages] = useState<ImageData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [cropImage, setCropImage] = useState<{ tempId: string; preview: string } | null>(null);
+  const [cropImage, setCropImage] = useState<{
+    tempId: string;
+    preview: string;
+  } | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [showApplyAll, setShowApplyAll] = useState(false);
 
   useEffect(() => {
     fetchClients();
   }, []);
 
   const fetchClients = async () => {
-    const { data } = await supabase.from('clients').select('*').order('name');
+    const { data } = await supabase.from("clients").select("*").order("name");
     if (data) setClients(data);
   };
 
@@ -41,20 +51,29 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
         const tempId = Math.random().toString(36);
         setImages((prev) => [
           ...prev,
-          { file, preview, cropFormat: '1:1', tempId },
+          { file, preview, cropFormat: "1:1", tempId },
         ]);
       };
       reader.readAsDataURL(file);
     });
 
-    e.target.value = '';
+    e.target.value = "";
   };
 
-  const handleCrop = (tempId: string, croppedFile: File) => {
+  const handleCrop = (
+    tempId: string,
+    croppedFile: File,
+    format: CropFormat
+  ) => {
     setImages((prev) =>
       prev.map((img) =>
         img.tempId === tempId
-          ? { ...img, file: croppedFile, preview: URL.createObjectURL(croppedFile) }
+          ? {
+              ...img,
+              file: croppedFile,
+              preview: URL.createObjectURL(croppedFile),
+              cropFormat: format,
+            }
           : img
       )
     );
@@ -82,6 +101,13 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
     setDraggedIndex(index);
   };
 
+  const applyFormatToAll = (format: CropFormat) => {
+    setImages((prevImages) =>
+      prevImages.map((img) => ({ ...img, cropFormat: format }))
+    );
+    setShowApplyAll(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClientId || images.length === 0) return;
@@ -90,14 +116,16 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
 
     try {
       const { data: post, error: postError } = await supabase
-        .from('posts')
-        .insert([{
-          client_id: selectedClientId,
-          post_type: postType,
-          scheduled_date: scheduledDate,
-          caption,
-          status: 'pending',
-        }])
+        .from("posts")
+        .insert([
+          {
+            client_id: selectedClientId,
+            post_type: postType,
+            scheduled_date: scheduledDate,
+            caption,
+            status: "pending",
+          },
+        ])
         .select()
         .single();
 
@@ -107,30 +135,32 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
         const image = images[i];
         const { url, publicId } = await uploadToCloudinary(image.file);
 
-        await supabase.from('post_images').insert([{
-          post_id: post.id,
-          image_url: url,
-          image_public_id: publicId,
-          crop_format: image.cropFormat,
-          position: i,
-        }]);
+        await supabase.from("post_images").insert([
+          {
+            post_id: post.id,
+            image_url: url,
+            image_public_id: publicId,
+            crop_format: image.cropFormat,
+            position: i,
+          },
+        ]);
       }
 
-      setSelectedClientId('');
-      setPostType('feed');
-      setScheduledDate('');
-      setCaption('');
+      setSelectedClientId("");
+      setPostType("feed");
+      setScheduledDate("");
+      setCaption("");
       setImages([]);
       onSuccess();
     } catch (error) {
-      console.error('Error creating post:', error);
-      alert('Failed to create post. Please try again.');
+      console.error("Error creating post:", error);
+      alert("Failed to create post. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const maxImages = postType === 'carousel' ? 10 : 1;
+  const maxImages = postType === "carousel" ? 10 : 1;
   const canAddMore = images.length < maxImages;
 
   return (
@@ -162,25 +192,27 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
             Post Type
           </label>
           <div className="grid grid-cols-4 gap-2">
-            {(['feed', 'carousel', 'story', 'reels'] as PostType[]).map((type) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => {
-                  setPostType(type);
-                  if (type !== 'carousel' && images.length > 1) {
-                    setImages([images[0]]);
-                  }
-                }}
-                className={`px-4 py-3 rounded-lg font-medium capitalize transition-colors ${
-                  postType === type
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {type}
-              </button>
-            ))}
+            {(["feed", "carousel", "story", "reels"] as PostType[]).map(
+              (type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => {
+                    setPostType(type);
+                    if (type !== "carousel" && images.length > 1) {
+                      setImages([images[0]]);
+                    }
+                  }}
+                  className={`px-4 py-3 rounded-lg font-medium capitalize transition-colors ${
+                    postType === type
+                      ? "bg-gray-900 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {type}
+                </button>
+              )
+            )}
           </div>
         </div>
 
@@ -212,10 +244,39 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <ImageIcon className="w-4 h-4 inline mr-1" />
-            Images {postType === 'carousel' && `(${images.length}/${maxImages})`}
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-gray-700">
+              <ImageIcon className="w-4 h-4 inline mr-1" />
+              Images{" "}
+              {postType === "carousel" && `(${images.length}/${maxImages})`}
+            </label>
+
+            {postType === "carousel" && images.length > 1 && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowApplyAll((prev) => !prev)}
+                  className="px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                >
+                  Apply format to all...
+                </button>
+                {showApplyAll && (
+                  <div className="absolute right-0 top-full mt-1 w-40 bg-white shadow-lg rounded-lg border z-10">
+                    {(["1:1", "4:5", "9:16"] as CropFormat[]).map((format) => (
+                      <button
+                        key={format}
+                        type="button"
+                        onClick={() => applyFormatToAll(format)}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        {format}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="space-y-3">
             {images.map((image, index) => (
@@ -226,7 +287,7 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
                 onDragOver={(e) => handleDragOver(e, index)}
                 className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg cursor-move hover:bg-gray-100 transition-colors"
               >
-                {postType === 'carousel' && (
+                {postType === "carousel" && (
                   <GripVertical className="w-5 h-5 text-gray-400 flex-shrink-0" />
                 )}
                 <img
@@ -242,7 +303,12 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setCropImage({ tempId: image.tempId, preview: image.preview })}
+                  onClick={() =>
+                    setCropImage({
+                      tempId: image.tempId,
+                      preview: image.preview,
+                    })
+                  }
                   className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Crop
@@ -266,7 +332,7 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
                 <input
                   type="file"
                   accept="image/*"
-                  multiple={postType === 'carousel'}
+                  multiple={postType === "carousel"}
                   onChange={handleFileSelect}
                   className="hidden"
                 />
@@ -280,15 +346,18 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
           disabled={loading || images.length === 0}
           className="w-full bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? 'Creating Post...' : 'Create Post'}
+          {loading ? "Creating Post..." : "Create Post"}
         </button>
       </form>
 
       {cropImage && (
         <ImageCropper
           imageUrl={cropImage.preview}
-          onCrop={(file) => handleCrop(cropImage.tempId, file)}
+          onCrop={(file, format) => handleCrop(cropImage.tempId, file, format)}
           onCancel={() => setCropImage(null)}
+          initialFormat={
+            images.find((img) => img.tempId === cropImage.tempId)?.cropFormat
+          }
         />
       )}
     </div>
