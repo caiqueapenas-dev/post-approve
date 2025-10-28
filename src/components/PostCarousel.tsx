@@ -28,7 +28,9 @@ export const PostCarousel = ({ images }: PostCarouselProps) => {
   const sortedImages = [...images].sort((a, b) => a.position - b.position);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX);
+    const touchX = e.targetTouches[0].clientX;
+    setTouchStart(touchX);
+    setTouchEnd(touchX);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -41,11 +43,11 @@ export const PostCarousel = ({ images }: PostCarouselProps) => {
     const distance = touchStart - touchEnd;
     const threshold = 50;
 
-    if (distance > threshold && currentIndex < sortedImages.length - 1) {
+    if (distance >= threshold && currentIndex < sortedImages.length - 1) {
       setCurrentIndex(currentIndex + 1);
     }
 
-    if (distance < -threshold && currentIndex > 0) {
+    if (distance <= -threshold && currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
     }
 
