@@ -844,37 +844,50 @@ export const PostCreator = ({
                 !isBulkMode && // isBulkMode definido
                 `(${images.length}/${maxImages})`}{" "}
               {/* images, maxImages definidos */}
-              {isBulkMode && `(${images.length})`}{" "}
-              {/* isBulkMode, images definidos */}
+              {isBulkMode && `(${images.length})`}
             </label>
 
-            {postType === "carousel" &&
-              images.length > 1 &&
-              !isBulkMode && ( // postType, images, isBulkMode definidos
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowApplyAll((prev) => !prev)} // setShowApplyAll definido
-                    className="px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-                  >
-                    Aplicar formato...
-                  </button>
-                  {showApplyAll && ( // showApplyAll definido
-                    <div className="absolute right-0 top-full mt-1 w-40 bg-white shadow-lg rounded-lg border z-10">
-                      {(["1:1", "4:5"] as CropFormat[]).map((format) => (
+            {/* Botão Aplicar Formato (Carrossel não-bulk OU Bulk com >1 imagem) */}
+            {((postType === "carousel" && images.length > 1 && !isBulkMode) ||
+              (isBulkMode &&
+                images.filter((img) => !isMediaVideo(img.preview)).length >
+                  1)) && ( // Só mostra se tiver >1 imagem (não vídeo) no bulk
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowApplyAll((prev) => !prev)} // setShowApplyAll definido
+                  className="px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                >
+                  Aplicar formato...
+                </button>
+                {showApplyAll && ( // showApplyAll definido
+                  <div className="absolute right-0 top-full mt-1 w-40 bg-white shadow-lg rounded-lg border z-10">
+                    {(["1:1", "4:5"] as CropFormat[]).map((format) => (
+                      <button
+                        key={format}
+                        type="button"
+                        onClick={() => applyFormatToAll(format)}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Aplicar {format} (Imagens)
+                      </button>
+                    ))}
+                    {/* Adiciona opção 9:16 se for Story/Reels bulk */}
+                    {(postType === "story" || postType === "reels") &&
+                      isBulkMode && (
                         <button
-                          key={format}
+                          key="9:16"
                           type="button"
-                          onClick={() => applyFormatToAll(format)} // applyFormatToAll definido
+                          onClick={() => applyFormatToAll("9:16")}
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
-                          {format} (Apenas imagens)
+                          Aplicar 9:16 (Imagens)
                         </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                      )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -887,14 +900,15 @@ export const PostCreator = ({
                   draggable={!isBulkMode} // draggable apenas se não for bulk
                   onDragStart={() => handleDragStart(index)} // handleDragStart definido
                   onDragOver={(e) => handleDragOver(e, index)} // handleDragOver definido
+                  // Ajuste no alinhamento e espaçamento para bulk
                   className={`flex items-start gap-3 bg-gray-50 p-3 rounded-lg transition-colors ${
                     !isBulkMode ? "cursor-move hover:bg-gray-100" : ""
                   }`}
                 >
-                  {postType === "carousel" &&
-                    !isBulkMode && ( // postType, isBulkMode definidos
-                      <GripVertical className="w-5 h-5 text-gray-400 flex-shrink-0 mt-5" />
-                    )}
+                  {postType === "carousel" && !isBulkMode && (
+                    <GripVertical className="w-5 h-5 text-gray-400 flex-shrink-0 mt-5" />
+                  )}
+                  {/* Imagem/Preview */}
                   {isVideo ? (
                     <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
                       <Video className="w-6 h-6 text-gray-500" />
@@ -957,8 +971,8 @@ export const PostCreator = ({
                         />
                       )}
                   </div>
-                  {/* Botão Crop (Apenas não-bulk e não-vídeo) */}
-                  {!isBulkMode && !isVideo && (
+                  {/* Botão Crop (Apenas para imagens, funciona em bulk) */}
+                  {!isVideo && (
                     <button
                       type="button"
                       onClick={() =>
@@ -973,14 +987,40 @@ export const PostCreator = ({
                       Crop
                     </button>
                   )}
-                  {/* Botão Remover */}
-                  <button
-                    type="button"
-                    onClick={() => removeImage(image.tempId)} // removeImage definido
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0" // Adicionado flex-shrink-0
+                  {/* Botões (agrupados para melhor layout) */}
+                  <div
+                    className={`flex ${
+                      isBulkMode
+                        ? "flex-col gap-2 ml-auto"
+                        : "items-center gap-2"
+                    } flex-shrink-0`}
                   >
-                    <X className="w-4 h-4" />
-                  </button>
+                    {" "}
+                    {/* Ajuste condicional */}
+                    {/* Botão Crop */}
+                    {!isVideo && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCropImage({
+                            tempId: image.tempId,
+                            preview: image.preview,
+                          })
+                        }
+                        className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        Crop
+                      </button>
+                    )}
+                    {/* Botão Remover */}
+                    <button
+                      type="button"
+                      onClick={() => removeImage(image.tempId)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" // Removido flex-shrink-0 daqui
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               );
             })}
