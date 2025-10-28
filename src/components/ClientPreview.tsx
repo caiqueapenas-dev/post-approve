@@ -459,9 +459,9 @@ export const ClientPreview = () => {
               </h3>
               <button
                 onClick={() => setShowChangeRequest(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
               >
-                <X className="w-5 h-5" />
+                Fechar
               </button>
             </div>
 
@@ -536,9 +536,9 @@ export const ClientPreview = () => {
                   </h3>
                   <button
                     onClick={() => setSelectedPost(null)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
                   >
-                    <X className="w-5 h-5" />
+                    Fechar
                   </button>
                 </div>
                 {selectedPost.caption && (
@@ -595,9 +595,9 @@ export const ClientPreview = () => {
                 </h3>
                 <button
                   onClick={() => setShowDateModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  Fechar
                 </button>
               </div>
               <div className="space-y-4">
@@ -661,9 +661,9 @@ export const ClientPreview = () => {
                 </h3>
                 <button
                   onClick={() => setShowDateModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  Fechar
                 </button>
               </div>
             </div>
