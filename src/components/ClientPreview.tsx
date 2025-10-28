@@ -184,7 +184,7 @@ export const ClientPreview = () => {
 
     return (
       <span
-        className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${className}`}
+        className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${className}`}
       >
         {icon}
         <span>{text}</span>
@@ -217,7 +217,7 @@ export const ClientPreview = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+        <div className="max-w-4xl mx-auto px-2 py-2">
           <div className="flex items-center gap-4">
             {client.avatar_url ? (
               <img
@@ -242,11 +242,11 @@ export const ClientPreview = () => {
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-4xl mx-auto px-2 py-6 space-y-6">
         <div className="flex gap-2">
           <button
             onClick={() => setViewMode("list")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`flex items-center gap-2 px-2 py-2 rounded-lg font-medium transition-colors ${
               viewMode === "list"
                 ? "bg-gray-900 text-white"
                 : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
@@ -257,7 +257,7 @@ export const ClientPreview = () => {
           </button>
           <button
             onClick={() => setViewMode("calendar")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`flex items-center gap-2 px-2 py-2 rounded-lg font-medium transition-colors ${
               viewMode === "calendar"
                 ? "bg-gray-900 text-white"
                 : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
@@ -270,7 +270,7 @@ export const ClientPreview = () => {
           {client.report_link_url && (
             <button
               onClick={() => setShowLeaveModal(true)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors bg-white text-gray-700 hover:bg-gray-100 border border-gray-200`}
+              className={`flex items-center gap-2 px-2 py-2 rounded-lg font-medium transition-colors bg-white text-gray-700 hover:bg-gray-100 border border-gray-200`}
             >
               <BarChart3 className="w-4 h-4" />
               Resultados
@@ -299,7 +299,7 @@ export const ClientPreview = () => {
                     <PostCarousel images={post.images} />
                   )}
 
-                  <div className="p-6 space-y-4">
+                  <div className="p-1 space-y-5">
                     <div className="flex items-start justify-between">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
@@ -330,7 +330,7 @@ export const ClientPreview = () => {
                         <button
                           onClick={() => handleApprove(post.id)}
                           disabled={loading}
-                          className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+                          className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white px-2 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
                         >
                           <CheckCircle2 className="w-5 h-5" />
                           Aprovar
@@ -340,10 +340,10 @@ export const ClientPreview = () => {
                             setSelectedPost(post);
                             setShowChangeRequest(true);
                           }}
-                          className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors"
+                          className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 rounded-lg font-medium hover:bg-gray-800 transition-colors"
                         >
                           <MessageSquare className="w-5 h-5" />
-                          Solicitar alterações
+                          Solicitar alteração
                         </button>
                       </div>
                     )}
@@ -473,7 +473,7 @@ export const ClientPreview = () => {
                 <select
                   value={changeType}
                   onChange={(e) => setChangeType(e.target.value as any)}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
+                  className="w-full px-2 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
                 >
                   <option value="visual">Visual/Imagem</option>
                   <option value="date">Data/Hora</option>
@@ -491,7 +491,7 @@ export const ClientPreview = () => {
                   onChange={(e) => setChangeMessage(e.target.value)}
                   required
                   rows={4}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none resize-none"
+                  className="w-full px-2 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none resize-none"
                   placeholder="Por favor, descreva as alterações que você gostaria..."
                 />
               </div>
@@ -500,14 +500,14 @@ export const ClientPreview = () => {
                 <button
                   type="button"
                   onClick={() => setShowChangeRequest(false)}
-                  className="flex-1 px-4 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-2 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 px-4 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
+                  className="flex-1 px-2 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
                   {loading ? "Enviando..." : "Enviar Solicitação"}{" "}
                 </button>
@@ -552,14 +552,14 @@ export const ClientPreview = () => {
                       <button
                         onClick={() => handleApprove(selectedPost.id)}
                         disabled={loading}
-                        className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+                        className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white py-2 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
                       >
                         <CheckCircle2 className="w-5 h-5" />
                         Aprovar
                       </button>
                       <button
                         onClick={() => setShowChangeRequest(true)}
-                        className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors"
+                        className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors"
                       >
                         <MessageSquare className="w-5 h-5" />
                         Solicitar alterações
@@ -747,7 +747,7 @@ export const ClientPreview = () => {
               <button
                 type="button"
                 onClick={() => setShowLeaveModal(false)}
-                className="flex-1 px-4 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex-1 px-2 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Cancelar
               </button>
@@ -756,7 +756,7 @@ export const ClientPreview = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setShowLeaveModal(false)}
-                className="flex-1 text-center px-4 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors"
+                className="flex-1 text-center px-2 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors"
               >
                 Continuar
               </a>

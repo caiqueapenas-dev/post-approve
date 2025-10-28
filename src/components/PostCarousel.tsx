@@ -1,9 +1,22 @@
-import { useState, useRef, useEffect } from 'react';
-import { PostImage } from '../lib/supabase';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useRef, useEffect } from "react";
+import { PostImage, CropFormat } from "../lib/supabase";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type PostCarouselProps = {
   images: PostImage[];
+};
+
+const getAspectRatioClass = (format: CropFormat | undefined) => {
+  switch (format) {
+    case "1:1":
+      return "aspect-[1/1]";
+    case "4:5":
+      return "aspect-[4/5]";
+    case "9:16":
+      return "aspect-[9/16]";
+    default:
+      return "aspect-video"; // Fallback
+  }
 };
 
 export const PostCarousel = ({ images }: PostCarouselProps) => {
@@ -44,18 +57,22 @@ export const PostCarousel = ({ images }: PostCarouselProps) => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({
         left: currentIndex * scrollRef.current.clientWidth,
-        behavior: 'smooth',
+        behavior: "smooth",
       });
     }
   }, [currentIndex]);
 
+  const aspectRatioClass = getAspectRatioClass(sortedImages[0]?.crop_format);
+
   if (sortedImages.length === 1) {
     return (
-      <div className="relative w-full bg-black rounded-lg overflow-hidden">
+      <div
+        className={`relative w-full bg-black rounded-lg overflow-hidden ${aspectRatioClass}`}
+      >
         <img
           src={sortedImages[0].image_url}
           alt="Post"
-          className="w-full h-auto"
+          className="w-full h-full object-cover"
         />
       </div>
     );
@@ -68,8 +85,8 @@ export const PostCarousel = ({ images }: PostCarouselProps) => {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        className={`flex overflow-x-auto snap-x snap-mandatory scrollbar-hide ${aspectRatioClass}`}
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {sortedImages.map((image) => (
           <div
@@ -79,7 +96,7 @@ export const PostCarousel = ({ images }: PostCarouselProps) => {
             <img
               src={image.image_url}
               alt={`Slide ${image.position + 1}`}
-              className="w-full h-auto"
+              className="w-full h-full object-cover"
             />
           </div>
         ))}
@@ -96,7 +113,11 @@ export const PostCarousel = ({ images }: PostCarouselProps) => {
           </button>
 
           <button
-            onClick={() => setCurrentIndex(Math.min(sortedImages.length - 1, currentIndex + 1))}
+            onClick={() =>
+              setCurrentIndex(
+                Math.min(sortedImages.length - 1, currentIndex + 1)
+              )
+            }
             disabled={currentIndex === sortedImages.length - 1}
             className="absolute right-2 top-1/2 -translate-y-1/2 bg-white bg-opacity-80 p-2 rounded-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-opacity-100 transition-all"
           >
@@ -109,8 +130,8 @@ export const PostCarousel = ({ images }: PostCarouselProps) => {
                 key={index}
                 className={`h-1.5 rounded-full transition-all ${
                   index === currentIndex
-                    ? 'w-6 bg-white'
-                    : 'w-1.5 bg-white bg-opacity-50'
+                    ? "w-6 bg-white"
+                    : "w-1.5 bg-white bg-opacity-50"
                 }`}
               />
             ))}

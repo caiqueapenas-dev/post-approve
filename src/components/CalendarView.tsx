@@ -131,8 +131,14 @@ export const CalendarView = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4">
         <div className="flex gap-2">
+          <button
+            onClick={() => setCurrentDate(new Date())}
+            className="px-4 py-2 rounded-lg font-medium transition-colors bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+          >
+            Hoje
+          </button>
           <button
             onClick={() => setViewMode("weekly")}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -156,50 +162,30 @@ export const CalendarView = ({
         </div>
 
         <div className="flex items-center gap-4">
-          {viewMode === "weekly" ? (
-            <>
-              <button
-                onClick={() => navigateWeek("prev")}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <span className="font-semibold text-gray-900 min-w-[180px] text-center capitalize">
-                {formatMonthYear(currentDate)}
-              </span>
-              <button
-                onClick={() => navigateWeek("next")}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </>
-          ) : (
-            <div className="flex items-center gap-2">
-              <select
-                value={currentDate.getMonth()}
-                onChange={(e) => handleMonthChange(Number(e.target.value))}
-                className="p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900"
-              >
-                {monthNames.map((month, index) => (
-                  <option key={month} value={index}>
-                    {month}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={currentDate.getFullYear()}
-                onChange={(e) => handleYearChange(Number(e.target.value))}
-                className="p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900"
-              >
-                {getYearOptions().map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <select
+              value={currentDate.getMonth()}
+              onChange={(e) => handleMonthChange(Number(e.target.value))}
+              className="p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900"
+            >
+              {monthNames.map((month, index) => (
+                <option key={month} value={index}>
+                  {month}
+                </option>
+              ))}
+            </select>
+            <select
+              value={currentDate.getFullYear()}
+              onChange={(e) => handleYearChange(Number(e.target.value))}
+              className="p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900"
+            >
+              {getYearOptions().map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
