@@ -9,6 +9,7 @@ import {
   User,
   Image as ImageIcon,
   X,
+  Calendar,
 } from "lucide-react";
 
 export const ClientManager = () => {
@@ -23,6 +24,7 @@ export const ClientManager = () => {
   // Estados para edição
   const [editName, setEditName] = useState("");
   const [editReportLink, setEditReportLink] = useState("");
+  const [editMetaCalendarLink, setEditMetaCalendarLink] = useState("");
   const [editColor, setEditColor] = useState("#9ca3af");
   const [editDisplayName, setEditDisplayName] = useState("");
   const [editAvatar, setEditAvatar] = useState<File | null>(null);
@@ -81,6 +83,7 @@ export const ClientManager = () => {
     setEditAvatarPreview(client.avatar_url || null);
     setEditAvatar(null);
     setEditReportLink(client.report_link_url || "");
+    setEditMetaCalendarLink(client.meta_calendar_url || "");
     setEditColor(client.color || "#9ca3af");
     setShowEditModal(client);
   };
@@ -117,6 +120,7 @@ export const ClientManager = () => {
           display_name: editDisplayName || editName, // Default para o nome interno
           avatar_url: avatarUrl,
           report_link_url: editReportLink || null,
+          meta_calendar_url: editMetaCalendarLink || null,
           color: editColor,
         })
         .eq("id", showEditModal.id);
@@ -409,6 +413,24 @@ export const ClientManager = () => {
                   onChange={(e) => setEditReportLink(e.target.value)}
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
                   placeholder="https://app.reportei.com/..."
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="editMetaCalendarLink"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  <Calendar className="w-4 h-4 inline mr-1" />
+                  Link do Calendário (Meta)
+                </label>
+                <input
+                  id="editMetaCalendarLink"
+                  type="url"
+                  value={editMetaCalendarLink}
+                  onChange={(e) => setEditMetaCalendarLink(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
+                  placeholder="https...business.facebook.com/latest/planner"
                 />
               </div>
 

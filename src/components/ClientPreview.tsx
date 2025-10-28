@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "./Router";
-import { supabase, Post, Client } from "../lib/supabase";
+import { supabase, Post, Client, PostImage } from "../lib/supabase";
 import { PostCarousel } from "./PostCarousel";
 import { CalendarView } from "./CalendarView";
 import {
@@ -14,7 +14,9 @@ import {
   User,
   BarChart3,
   ExternalLink,
+  Download,
 } from "lucide-react";
+import { downloadMedia } from "../lib/utils";
 
 export const ClientPreview = () => {
   const { linkId } = useParams();
@@ -90,6 +92,7 @@ export const ClientPreview = () => {
 
     await fetchClientData();
     setSelectedPost(null);
+    setShowDateModal(false); // Fecha o modal de data se estiver aberto
     setLoading(false);
   };
 
@@ -121,7 +124,14 @@ export const ClientPreview = () => {
     setShowChangeRequest(false);
     await fetchClientData();
     setSelectedPost(null);
+    setShowDateModal(false); // Fecha o modal de data se estiver aberto
     setLoading(false);
+  };
+
+  const handleDownload = async (image: PostImage) => {
+    // Extrai um nome de arquivo razoável
+    const filename = image.image_url.split("/").pop() || "download";
+    await downloadMedia(image.image_url, filename);
   };
 
   const formatDate = (date: string) => {
@@ -299,7 +309,11 @@ export const ClientPreview = () => {
                   className="bg-white rounded-xl shadow-sm overflow-hidden"
                 >
                   {post.images && post.images.length > 0 && (
-                    <PostCarousel images={post.images} />
+                    <PostCarousel
+                      images={post.images}
+                      showDownloadButton={true}
+                      onDownload={handleDownload}
+                    />
                   )}
 
                   <div className="p-1 space-y-5">
@@ -405,46 +419,53 @@ export const ClientPreview = () => {
                 </button>
                 {showApproved && (
                   <div className="space-y-4 p-6 border-t border-gray-100">
-                    {showApproved && (
-                      <div className="space-y-4 p-6 border-t border-gray-100">
-                        {approvedPosts.map((post) => {
-                          const dateInfo = formatDate(post.scheduled_date);
-                          return (
-                            <div
-                              key={post.id}
-                              className="flex gap-4 p-4 border border-gray-200 rounded-lg"
-                            >
-                              {post.images && post.images.length > 0 && (
-                                <img
-                                  src={post.images[0].image_url}
-                                  alt="Post preview"
-                                  className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-                                />
-                              )}
-                              <div className="flex-1 space-y-1.5">
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="w-4 h-4 text-gray-600" />
-                                  <span className="text-sm font-medium text-gray-900">
-                                    {dateInfo.date} - {dateInfo.time}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {getStatusBadge(post.status)}
-                                  <span className="text-sm text-gray-600 capitalize">
-                                    {post.post_type}
-                                  </span>
-                                </div>
-                                {post.caption && (
-                                  <p className="text-sm text-gray-700 line-clamp-2">
-                                    {post.caption}
-                                  </p>
-                                )}
-                              </div>
+                    {approvedPosts.map((post) => {
+                      const dateInfo = formatDate(post.scheduled_date);
+                      return (
+                        <div
+                          key={post.id}
+                          className="flex gap-4 p-4 border border-gray-200 rounded-lg"
+                        >
+                          {post.images && post.images.length > 0 && (
+                            <img
+                              src={post.images[0].image_url}
+                              alt="Post preview"
+                              className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                            />
+                          )}
+                          <div className="flex-1 space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-gray-600" />
+                              <span className="text-sm font-medium text-gray-900">
+                                {dateInfo.date} - {dateInfo.time}
+                              </span>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                            <div className="flex items-center gap-2">
+                              {getStatusBadge(post.status)}
+                              <span className="text-sm text-gray-600 capitalize">
+                                {post.post_type}
+                              </span>
+                            </div>
+                            {post.caption && (
+                              <p className="text-sm text-gray-700 line-clamp-2">
+                                {post.caption}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (post.images && post.images.length > 0) {
+                                handleDownload(post.images[0]);
+                              }
+                            }}
+                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="Baixar mídia"
+                          >
+                            <Download className="w-5 h-5" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -478,7 +499,7 @@ export const ClientPreview = () => {
                   onChange={(e) => setChangeType(e.target.value as any)}
                   className="w-full px-2 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
                 >
-                  <option value="visual">Visual/Imagem</option>
+                  <option value="visual">Visual/Mídia</option>
                   <option value="date">Data/Hora</option>
                   <option value="caption">Legenda</option>
                   <option value="other">Outro</option>
@@ -529,7 +550,11 @@ export const ClientPreview = () => {
             <div className="bg-white rounded-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
               {selectedPost.images && selectedPost.images.length > 0 && (
                 <div className="max-h-[60vh] overflow-hidden">
-                  <PostCarousel images={selectedPost.images} />
+                  <PostCarousel
+                    images={selectedPost.images}
+                    showDownloadButton={true}
+                    onDownload={handleDownload}
+                  />
                 </div>
               )}
               <div className="p-6">
@@ -586,75 +611,6 @@ export const ClientPreview = () => {
             className="bg-white rounded-2xl max-w-sm w-full max-h-[80vh] overflow-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-gray-900">
-                  Posts de{" "}
-                  {selectedDatePosts.length > 0
-                    ? formatDate(
-                        selectedDatePosts[0].scheduled_date
-                      ).date.split(" ")[0]
-                    : ""}
-                </h3>
-                <button
-                  onClick={() => setShowDateModal(false)}
-                  className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
-                >
-                  Fechar
-                </button>
-              </div>
-              <div className="space-y-4">
-                {selectedDatePosts.map((post) => (
-                  <div
-                    key={post.id}
-                    className="border border-gray-200 rounded-lg overflow-hidden"
-                  >
-                    {post.images && post.images.length > 0 && (
-                      <PostCarousel images={post.images} />
-                    )}
-                    <div className="p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        {getStatusBadge(post.status)}
-                        <span className="text-sm text-gray-600 capitalize">
-                          {post.post_type}
-                        </span>
-                      </div>
-                      {post.caption && (
-                        <div className="bg-gray-50 rounded-lg p-3">
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap line-clamp-3">
-                            {post.caption}
-                          </p>
-                        </div>
-                      )}
-                      {post.status === "pending" && (
-                        <button
-                          onClick={() => {
-                            setShowDateModal(false);
-                            setSelectedPost(post);
-                          }}
-                          className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-2.5 rounded-lg font-medium hover:bg-gray-800 transition-colors"
-                        >
-                          Ver e Aprovar
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Modal de Posts do Dia (Calendário) */}
-      {showDateModal && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 overflow-auto"
-          onClick={() => setShowDateModal(false)}
-        >
-          <div
-            className="bg-white rounded-2xl max-w-sm w-full max-h-[80vh] overflow-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
             <div className="p-6 sticky top-0 bg-white border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-gray-900">
@@ -677,7 +633,11 @@ export const ClientPreview = () => {
                   className="border border-gray-200 rounded-xl overflow-hidden"
                 >
                   {post.images && post.images.length > 0 && (
-                    <PostCarousel images={post.images} />
+                    <PostCarousel
+                      images={post.images}
+                      showDownloadButton={true}
+                      onDownload={handleDownload}
+                    />
                   )}
                   <div className="p-4 space-y-3">
                     <div className="flex items-center gap-2">

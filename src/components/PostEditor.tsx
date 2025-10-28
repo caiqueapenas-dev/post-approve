@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { supabase, Post, PostStatus } from "../lib/supabase";
-import { X, Calendar, MessageSquare, Save, Trash2 } from "lucide-react";
+import {
+  X,
+  Calendar,
+  MessageSquare,
+  Save,
+  Trash2,
+  ExternalLink,
+} from "lucide-react";
 import { PostCarousel } from "./PostCarousel";
 
 type PostEditorProps = {
@@ -118,7 +125,7 @@ export const PostEditor = ({ post, onClose, onSuccess }: PostEditorProps) => {
             {post.images && post.images.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Imagens (Apenas visualização)
+                  Mídias (Apenas visualização)
                 </label>
                 <PostCarousel images={post.images} />
               </div>
@@ -142,21 +149,23 @@ export const PostEditor = ({ post, onClose, onSuccess }: PostEditorProps) => {
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="caption"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Legenda
-              </label>
-              <textarea
-                id="caption"
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                rows={6}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none resize-none"
-              />
-            </div>
+            {post.post_type !== "story" && (
+              <div>
+                <label
+                  htmlFor="caption"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Legenda
+                </label>
+                <textarea
+                  id="caption"
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  rows={6}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none resize-none"
+                />
+              </div>
+            )}
 
             <div>
               <label
@@ -190,6 +199,17 @@ export const PostEditor = ({ post, onClose, onSuccess }: PostEditorProps) => {
               <Trash2 className="w-4 h-4" />
               Excluir
             </button>
+            {status === "approved" && post.client?.meta_calendar_url && (
+              <a
+                href={post.client.meta_calendar_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Postar
+              </a>
+            )}
             <button
               type="button"
               onClick={onClose}

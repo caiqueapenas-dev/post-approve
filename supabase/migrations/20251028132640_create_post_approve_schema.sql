@@ -67,6 +67,8 @@ CREATE TABLE IF NOT EXISTS clients (
   display_name text,
   avatar_url text,
   color text DEFAULT '#9ca3af', -- Adicionado default gray-400
+  report_link_url text,
+  meta_calendar_url text,
   unique_link_id text UNIQUE NOT NULL,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()

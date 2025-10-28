@@ -1,12 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import { PostImage, CropFormat } from "../lib/supabase";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { isMediaVideo } from "../lib/utils";
 
 type PostCarouselProps = {
   images: PostImage[];
+  showDownloadButton?: boolean;
+  onDownload?: (image: PostImage) => void;
 };
 
 const getAspectRatioClass = (format: CropFormat | undefined) => {
+  // Se for reels/story (9:16), usa aspect-video que é próximo
+  // ou podemos forçar 9:16
   switch (format) {
     case "1:1":
       return "aspect-[1/1]";
@@ -19,7 +24,11 @@ const getAspectRatioClass = (format: CropFormat | undefined) => {
   }
 };
 
-export const PostCarousel = ({ images }: PostCarouselProps) => {
+export const PostCarousel = ({
+  images,
+  showDownloadButton = false,
+  onDownload = () => {},
+}: PostCarouselProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
@@ -78,15 +87,40 @@ export const PostCarousel = ({ images }: PostCarouselProps) => {
   const aspectRatioClass = getAspectRatioClass(sortedImages[0]?.crop_format);
 
   if (sortedImages.length === 1) {
+    const media = sortedImages[0];
+    const isVideo = isMediaVideo(media.image_url);
     return (
       <div
         className={`relative w-full bg-black rounded-lg overflow-hidden ${aspectRatioClass}`}
       >
-        <img
-          src={sortedImages[0].image_url}
-          alt="Post"
-          className="w-full h-full object-cover"
-        />
+        {isVideo ? (
+          <video
+            src={media.image_url}
+            controls
+            playsInline
+            className="w-full h-full object-cover"
+          >
+            Seu navegador não suporta vídeos.
+          </video>
+        ) : (
+          <img
+            src={media.image_url}
+            alt="Post"
+            className="w-full h-full object-cover"
+          />
+        )}
+        {showDownloadButton && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDownload(media);
+            }}
+            title="Baixar mídia"
+            className="absolute top-2 right-2 bg-white bg-opacity-80 p-2 rounded-full shadow-lg hover:bg-opacity-100 transition-all"
+          >
+            <Download className="w-5 h-5 text-gray-900" />
+          </button>
+        )}
       </div>
     );
   }
@@ -101,18 +135,44 @@ export const PostCarousel = ({ images }: PostCarouselProps) => {
         className={`flex overflow-x-auto snap-x snap-mandatory scrollbar-hide ${aspectRatioClass}`}
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
-        {sortedImages.map((image) => (
-          <div
-            key={image.id}
-            className="w-full flex-shrink-0 snap-center bg-black"
-          >
-            <img
-              src={image.image_url}
-              alt={`Slide ${image.position + 1}`}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        ))}
+        {sortedImages.map((image) => {
+          const isVideo = isMediaVideo(image.image_url);
+          return (
+            <div
+              key={image.id}
+              className="w-full flex-shrink-0 snap-center bg-black relative"
+            >
+              {isVideo ? (
+                <video
+                  src={image.image_url}
+                  controls
+                  playsInline
+                  className="w-full h-full object-cover"
+                >
+                  Seu navegador não suporta vídeos.
+                </video>
+              ) : (
+                <img
+                  src={image.image_url}
+                  alt={`Slide ${image.position + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              )}
+              {showDownloadButton && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDownload(image);
+                  }}
+                  title="Baixar mídia"
+                  className="absolute top-2 right-2 bg-white bg-opacity-80 p-2 rounded-full shadow-lg hover:bg-opacity-100 transition-all z-10"
+                >
+                  <Download className="w-5 h-5 text-gray-900" />
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {sortedImages.length > 1 && (
@@ -120,7 +180,7 @@ export const PostCarousel = ({ images }: PostCarouselProps) => {
           <button
             onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
             disabled={currentIndex === 0}
-            className="absolute left-2 top-1/2 -translate-y-1/2 bg-white bg-opacity-80 p-2 rounded-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-opacity-100 transition-all"
+            className="absolute left-2 top-1/2 -translate-y-1/2 bg-white bg-opacity-80 p-2 rounded-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-opacity-100 transition-all z-10"
           >
             <ChevronLeft className="w-5 h-5 text-gray-900" />
           </button>
@@ -132,12 +192,12 @@ export const PostCarousel = ({ images }: PostCarouselProps) => {
               )
             }
             disabled={currentIndex === sortedImages.length - 1}
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-white bg-opacity-80 p-2 rounded-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-opacity-100 transition-all"
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-white bg-opacity-80 p-2 rounded-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-opacity-100 transition-all z-10"
           >
             <ChevronRight className="w-5 h-5 text-gray-900" />
           </button>
 
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
             {sortedImages.map((_, index) => (
               <div
                 key={index}

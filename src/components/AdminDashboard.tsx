@@ -1,17 +1,32 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { ClientManager } from "./ClientManager";
-import { PostCreator } from "./PostCreator";
+import { PostCreator, ImageData } from "./PostCreator";
 import { PostList } from "./PostList";
 import { AdminCalendarView } from "./AdminCalendarView";
-import { LogOut, Users, FileText, Calendar } from "lucide-react";
+import { LogOut, Users, FileText, Calendar, Plus } from "lucide-react";
+import { PostPreviewer } from "./PostPreviewer";
+import { PostType } from "../lib/supabase";
+
+type DraftData = {
+  images: ImageData[];
+  caption: string;
+  postType: PostType;
+};
+
 export const AdminDashboard = () => {
   const { signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<"posts" | "clients" | "calendar">(
-    "posts"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "create" | "posts" | "clients" | "calendar"
+  >("create");
   const [refreshPosts, setRefreshPosts] = useState(0);
   const [showSplitCalendar, setShowSplitCalendar] = useState(true);
+  const [showPreviewColumn, setShowPreviewColumn] = useState(true);
+  const [draftData, setDraftData] = useState<DraftData>({
+    images: [],
+    caption: "",
+    postType: "feed",
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -34,6 +49,17 @@ export const AdminDashboard = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex gap-2 mb-8">
+          <button
+            onClick={() => setActiveTab("create")}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
+              activeTab === "create"
+                ? "bg-gray-900 text-white"
+                : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+            }`}
+          >
+            <Plus className="w-5 h-5" />
+            Novo Post
+          </button>
           <button
             onClick={() => setActiveTab("posts")}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
@@ -69,28 +95,57 @@ export const AdminDashboard = () => {
           </button>
         </div>
 
-        {activeTab === "clients" ? (
-          <ClientManager />
-        ) : activeTab === "calendar" ? (
-          <AdminCalendarView />
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-8 space-y-8 lg:space-y-0">
+        {activeTab === "clients" && <ClientManager />}
+        {activeTab === "posts" && <PostList refresh={refreshPosts} />}
+        {activeTab === "calendar" && <AdminCalendarView />}
+        {activeTab === "create" && (
+          <div
+            className={`grid grid-cols-1 lg:gap-8 ${
+              showSplitCalendar && showPreviewColumn
+                ? "lg:grid-cols-3"
+                : showSplitCalendar || showPreviewColumn
+                ? "lg:grid-cols-2"
+                : "lg:grid-cols-1"
+            }`}
+          >
+            {/* Coluna 1: PostCreator */}
             <div
               className={`space-y-8 ${
-                showSplitCalendar ? "lg:col-span-1" : "lg:col-span-2"
+                !showSplitCalendar && !showPreviewColumn ? "lg:col-span-1" : "" // Ocupa todo o espaço se for o único
               }`}
             >
               <PostCreator
-                onSuccess={() => setRefreshPosts((prev) => prev + 1)}
+                onSuccess={() => {
+                  setRefreshPosts((prev) => prev + 1);
+                  setDraftData({
+                    images: [],
+                    caption: "",
+                    postType: "feed",
+                  }); // Limpa o preview
+                }}
                 showCalendar={showSplitCalendar}
                 onToggleCalendar={() => setShowSplitCalendar((prev) => !prev)}
+                showPreview={showPreviewColumn}
+                onTogglePreview={() => setShowPreviewColumn((prev) => !prev)}
+                onDraftChange={setDraftData}
               />
-              {!showSplitCalendar && <PostList refresh={refreshPosts} />}
             </div>
+
+            {/* Coluna 2: Calendário */}
             {showSplitCalendar && (
-              <div className="lg:col-span-1 space-y-8">
+              <div className="lg:col-span-1 space-y-8 hidden lg:block">
                 <AdminCalendarView showTitle={false} />
-                <PostList refresh={refreshPosts} />
+              </div>
+            )}
+
+            {/* Coluna 3: Preview */}
+            {showPreviewColumn && (
+              <div className="lg:col-span-1 space-y-8 hidden lg:block">
+                <PostPreviewer
+                  images={draftData.images}
+                  caption={draftData.caption}
+                  postType={draftData.postType}
+                />
               </div>
             )}
           </div>

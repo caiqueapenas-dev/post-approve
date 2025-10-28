@@ -16,11 +16,13 @@ import {
   AlertCircle,
   Layout,
   Rows,
+  PanelRight,
+  Video,
 } from "lucide-react";
-import { PostCarousel } from "./PostCarousel";
 import { PostImage, Post } from "../lib/supabase";
+import { isMediaVideo } from "../lib/utils";
 
-type ImageData = {
+export type ImageData = {
   file: File;
   preview: string;
   cropFormat: CropFormat;
@@ -32,10 +34,20 @@ export const PostCreator = ({
   onSuccess,
   showCalendar,
   onToggleCalendar,
+  showPreview,
+  onTogglePreview,
+  onDraftChange,
 }: {
   onSuccess: () => void;
   showCalendar: boolean;
   onToggleCalendar: () => void;
+  showPreview: boolean;
+  onTogglePreview: () => void;
+  onDraftChange: (data: {
+    images: ImageData[];
+    caption: string;
+    postType: PostType;
+  }) => void;
 }) => {
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = useState("");
@@ -65,7 +77,6 @@ export const PostCreator = ({
   } | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [showApplyAll, setShowApplyAll] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
   const [clientPosts, setClientPosts] = useState<Post[]>([]);
   const [conflictingPosts, setConflictingPosts] = useState<Post[]>([]);
   const [latestPostDate, setLatestPostDate] = useState<Date | null>(null);
@@ -142,14 +153,11 @@ export const PostCreator = ({
     }
   }, [scheduledDate, clientPosts]);
 
-  const getPreviewImages = (): PostImage[] => {
-    return images.map((img, index) => ({
-      id: img.tempId,
-      image_url: img.preview,
-      position: index,
-      crop_format: img.cropFormat,
-    })) as PostImage[]; // Cast as PostImage[] for the prop
-  };
+  // Envia mudanças para o preview externo
+  useEffect(() => {
+    onDraftChange({ images, caption, postType });
+  }, [images, caption, postType, onDraftChange]);
+
   const compressImage = (file: File): Promise<File> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -216,40 +224,68 @@ export const PostCreator = ({
     const newImages: ImageData[] = [];
 
     for (const file of files) {
-      // Ignora se não for imagem
-      if (!file.type.startsWith("image/")) continue;
+      const isVideo = file.type.startsWith("video/");
+      let processedFile = file;
 
       try {
-        const compressedFile = await compressImage(file);
+        // Comprime apenas se for imagem
+        if (!isVideo && file.type.startsWith("image/")) {
+          processedFile = await compressImage(file);
+        } else if (!isVideo && !file.type.startsWith("image/")) {
+          // Ignora se não for imagem nem vídeo
+          continue;
+        }
 
-        // Gera o preview a partir do arquivo comprimido
-        const preview = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (event) => resolve(event.target?.result as string);
-          reader.onerror = (err) => reject(err);
-          reader.readAsDataURL(compressedFile);
-        });
+        // Gera o preview
+        const preview = URL.createObjectURL(processedFile);
+
+        let defaultFormat: CropFormat = "4:5";
+        if (postType === "story") defaultFormat = "9:16";
+        if (isVideo) defaultFormat = "9:16"; // Vídeos são 9:16 por padrão (Reels/Story)
 
         newImages.push({
-          file: compressedFile,
+          file: processedFile,
           preview,
-          cropFormat: postType === "story" ? "9:16" : "4:5", // 9:16 para story, 4:5 para outros
+          cropFormat: defaultFormat,
           tempId: Math.random().toString(36),
-          fileName: compressedFile.name,
+          fileName: processedFile.name,
         });
       } catch (err) {
-        console.error("Failed to compress or read image:", err);
+        console.error("Failed to process file:", err);
         alert(
-          `Failed to process ${file.name}. It might be corrupted or not an image.`
+          `Failed to process ${file.name}. It might be corrupted or not a valid media file.`
         );
       }
     }
 
     setImages((prev) => {
-      const updatedImages = [...prev, ...newImages];
+      let updatedImages = [...prev, ...newImages];
+
+      // Se o tipo NÃO for carrossel, limita a 1
+      if (postType !== "carousel") {
+        updatedImages = updatedImages.slice(-1);
+      }
+
+      // Se o tipo for carrossel, limita a 10
+      if (postType === "carousel") {
+        updatedImages = updatedImages.slice(0, 10);
+      }
+
+      // Se houver mais de 1 imagem, força o tipo carrossel
       if (updatedImages.length > 1) {
         setPostType("carousel");
       }
+
+      // Se a (nova) única mídia for um vídeo, seta o tipo para Reels
+      if (
+        updatedImages.length === 1 &&
+        updatedImages[0].file.type.startsWith("video/")
+      ) {
+        setPostType("reels");
+        // E força o crop para 9:16
+        updatedImages[0].cropFormat = "9:16";
+      }
+
       return updatedImages;
     });
     e.target.value = "";
@@ -277,7 +313,19 @@ export const PostCreator = ({
   };
 
   const removeImage = (tempId: string) => {
-    setImages((prev) => prev.filter((img) => img.tempId !== tempId));
+    setImages((prev) => {
+      const newImages = prev.filter((img) => img.tempId !== tempId);
+      // Se cair para 1 imagem, muda o tipo para 'feed' (ou 'reels' se for video)
+      if (newImages.length === 1) {
+        const isVideo = newImages[0].file.type.startsWith("video/");
+        setPostType(isVideo ? "reels" : "feed");
+      }
+      // Se zerar, reseta para 'feed'
+      if (newImages.length === 0) {
+        setPostType("feed");
+      }
+      return newImages;
+    });
   };
 
   const handleDragStart = (index: number) => {
@@ -299,7 +347,12 @@ export const PostCreator = ({
 
   const applyFormatToAll = (format: CropFormat) => {
     setImages((prevImages) =>
-      prevImages.map((img) => ({ ...img, cropFormat: format }))
+      prevImages.map((img) =>
+        // Não aplica crop em vídeos
+        img.file.type.startsWith("video/")
+          ? img
+          : { ...img, cropFormat: format }
+      )
     );
     setShowApplyAll(false);
   };
@@ -377,24 +430,41 @@ export const PostCreator = ({
   const selectedClient = clients.find((c) => c.id === selectedClientId);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 h-full flex flex-col">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 h-full flex flex-col max-h-[calc(100vh-140px)]">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-bold text-gray-900">Create New Post</h3>
-        <button
-          type="button"
-          onClick={onToggleCalendar}
-          className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-          title={showCalendar ? "Ocultar Calendário" : "Mostrar Calendário"}
-        >
-          {showCalendar ? (
-            <Rows className="w-4 h-4" />
-          ) : (
-            <Layout className="w-4 h-4" />
-          )}
-          <span className="text-sm font-medium">
-            {showCalendar ? "Layout Simples" : "Dividir"}
-          </span>
-        </button>
+        <h3 className="text-xl font-bold text-gray-900">Criar Novo Post</h3>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onToggleCalendar}
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            title={showCalendar ? "Ocultar Calendário" : "Mostrar Calendário"}
+          >
+            {showCalendar ? (
+              <Rows className="w-4 h-4" />
+            ) : (
+              <Layout className="w-4 h-4" />
+            )}
+            <span className="text-sm font-medium">
+              {showCalendar ? "Layout Simples" : "Dividir"}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={onTogglePreview}
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            title={showPreview ? "Ocultar Preview" : "Mostrar Preview"}
+          >
+            {showPreview ? (
+              <PanelRight className="w-4 h-4" />
+            ) : (
+              <Eye className="w-4 h-4" />
+            )}
+            <span className="text-sm font-medium">
+              {showPreview ? "Sem Preview" : "Preview"}
+            </span>
+          </button>
+        </div>
       </div>
 
       <form
@@ -403,7 +473,7 @@ export const PostCreator = ({
       >
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Client
+            Cliente
           </label>
           <div className="relative">
             <button
@@ -467,7 +537,7 @@ export const PostCreator = ({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Post Type
+            Tipo
           </label>
           <div className="grid grid-cols-4 gap-2">
             {(["feed", "carousel", "story", "reels"] as PostType[]).map(
@@ -488,8 +558,17 @@ export const PostCreator = ({
                     }
                     if (type !== "carousel" && images.length > 1) {
                       // Se não for carrossel, limita a 1 imagem (mantém a primeira)
-                      // Se o tipo for story, a imagem já terá o crop 9:16
                       setImages((prevImages) => [prevImages[0]]);
+                    }
+                    if (type === "carousel" && images.length === 1) {
+                      // Se for carrossel e só tiver 1 vídeo, não faz sentido
+                      if (images[0].file.type.startsWith("video/")) {
+                        setImages([]);
+                      }
+                    }
+                    if (type === "reels" || type === "story") {
+                      // Se for reels ou story, só pode ter 1 item
+                      setImages((prevImages) => prevImages.slice(0, 1));
                     }
                   }}
                   className={`px-4 py-3 rounded-lg font-medium capitalize transition-colors ${
@@ -511,7 +590,7 @@ export const PostCreator = ({
             className="block text-sm font-medium text-gray-700 mb-2 cursor-pointer"
           >
             <Calendar className="w-4 h-4 inline mr-1" />
-            Scheduled Date
+            Data Agendada
           </label>
           <input
             id="scheduledDateInput"
@@ -567,14 +646,14 @@ export const PostCreator = ({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {" "}
-              Caption
+              Legenda
             </label>
             <textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
               rows={4}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none resize-none"
-              placeholder="Write your caption here..."
+              placeholder="Escreva sua legenda aqui..."
             />
           </div>
         )}
@@ -583,7 +662,7 @@ export const PostCreator = ({
           <div className="flex items-center justify-between mb-2">
             <label className="block text-sm font-medium text-gray-700">
               <ImageIcon className="w-4 h-4 inline mr-1" />
-              Images{" "}
+              Mídias{" "}
               {postType === "carousel" && `(${images.length}/${maxImages})`}
             </label>
 
@@ -594,18 +673,18 @@ export const PostCreator = ({
                   onClick={() => setShowApplyAll((prev) => !prev)}
                   className="px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
                 >
-                  Apply format to all...
+                  Aplicar formato...
                 </button>
                 {showApplyAll && (
                   <div className="absolute right-0 top-full mt-1 w-40 bg-white shadow-lg rounded-lg border z-10">
-                    {(["1:1", "4:5", "9:16"] as CropFormat[]).map((format) => (
+                    {(["1:1", "4:5"] as CropFormat[]).map((format) => (
                       <button
                         key={format}
                         type="button"
                         onClick={() => applyFormatToAll(format)}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
-                        {format}
+                        {format} (Apenas imagens)
                       </button>
                     ))}
                   </div>
@@ -615,52 +694,62 @@ export const PostCreator = ({
           </div>
 
           <div className="space-y-3">
-            {images.map((image, index) => (
-              <div
-                key={image.tempId}
-                draggable
-                onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg cursor-move hover:bg-gray-100 transition-colors"
-              >
-                {postType === "carousel" && (
-                  <GripVertical className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                )}
-                <img
-                  src={image.preview}
-                  alt={`Upload ${index + 1}`}
-                  className="w-16 h-16 object-cover rounded-lg"
-                />
-                <div className="flex-1 overflow-hidden">
-                  <p
-                    className="text-sm font-medium text-gray-900 truncate"
-                    title={image.fileName}
+            {images.map((image, index) => {
+              const isVideo = isMediaVideo(image.preview);
+              return (
+                <div
+                  key={image.tempId}
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg cursor-move hover:bg-gray-100 transition-colors"
+                >
+                  {postType === "carousel" && (
+                    <GripVertical className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                  )}
+                  {isVideo ? (
+                    <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+                      <Video className="w-6 h-6 text-gray-500" />
+                    </div>
+                  ) : (
+                    <img
+                      src={image.preview}
+                      alt={`Upload ${index + 1}`}
+                      className="w-16 h-16 object-cover rounded-lg"
+                    />
+                  )}
+                  <div className="flex-1 overflow-hidden">
+                    <p
+                      className="text-sm font-medium text-gray-900 truncate"
+                      title={image.fileName}
+                    >
+                      {image.fileName}
+                    </p>
+                    <p className="text-xs text-gray-500">{image.cropFormat}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCropImage({
+                        tempId: image.tempId,
+                        preview: image.preview,
+                      })
+                    }
+                    disabled={isVideo}
+                    className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {image.fileName}
-                  </p>
-                  <p className="text-xs text-gray-500">{image.cropFormat}</p>
+                    Crop
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeImage(image.tempId)}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCropImage({
-                      tempId: image.tempId,
-                      preview: image.preview,
-                    })
-                  }
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Crop
-                </button>
-                <button
-                  type="button"
-                  onClick={() => removeImage(image.tempId)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
+              );
+            })}
 
             {canAddMore && (
               <label
@@ -674,20 +763,20 @@ export const PostCreator = ({
                   <>
                     <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
                     <span className="text-sm font-medium text-gray-600">
-                      Comprimindo...
+                      Processando...
                     </span>
                   </>
                 ) : (
                   <>
                     <Plus className="w-5 h-5 text-gray-400" />
                     <span className="text-sm font-medium text-gray-600">
-                      Add Image
+                      Adicionar Mídia
                     </span>
                   </>
                 )}
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/*"
                   multiple={postType === "carousel"}
                   onChange={handleFileSelect}
                   className="hidden"
@@ -708,68 +797,28 @@ export const PostCreator = ({
             </div>
             <div className="flex items-center justify-center gap-2 text-sm font-medium text-gray-700">
               <UploadCloud className="w-4 h-4" />
-              <span>Enviando imagens... {Math.round(uploadProgress)}%</span>
+              <span>Enviando mídias... {Math.round(uploadProgress)}%</span>
             </div>
           </div>
         ) : (
           <div className="flex gap-3">
             <button
-              type="button"
-              onClick={() => setShowPreview(true)}
-              disabled={images.length === 0}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
-              <Eye className="w-4 h-4" />
-              Preview
-            </button>
-            <button
               type="submit"
-              disabled={submitLoading || compressLoading || images.length === 0}
+              disabled={
+                submitLoading ||
+                compressLoading ||
+                images.length === 0 ||
+                !selectedClientId
+              }
               className="flex-1 bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitLoading ? "Criando Post..." : "Create Post"}
+              {submitLoading ? "Criando Post..." : "Criar Post"}
             </button>
           </div>
         )}
       </form>
 
-      {showPreview && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-40" // z-40 (abaixo do cropper)
-          onClick={() => setShowPreview(false)}
-        >
-          <div className="max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-white rounded-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-              {images.length > 0 && (
-                <PostCarousel images={getPreviewImages()} />
-              )}
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-gray-900">
-                    Post Preview
-                  </h3>
-                  <button
-                    onClick={() => setShowPreview(false)}
-                    className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    Fechar
-                  </button>
-                </div>
-                {caption && (
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {caption}
-                  </p>
-                )}
-                {!caption && (
-                  <p className="text-sm text-gray-500 italic">
-                    Sem legenda definida.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* O modal de preview foi removido e movido para AdminDashboard como PostPreviewer */}
 
       {cropImage && (
         <ImageCropper

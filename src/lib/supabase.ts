@@ -19,6 +19,7 @@ export type Client = {
   created_at: string;
   updated_at: string;
   report_link_url: string | null;
+  meta_calendar_url: string | null;
 };
 
 export type PostType = "feed" | "carousel" | "story" | "reels";

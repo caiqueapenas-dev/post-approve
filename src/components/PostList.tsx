@@ -72,22 +72,22 @@ export const PostList = ({ refresh }: { refresh: number }) => {
     // Ajusta para UTC
     const dUtc = new Date(d.getTime() + d.getTimezoneOffset() * 60000);
     const days = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
+      "Domingo",
+      "Segunda",
+      "Terça",
+      "Quarta",
+      "Quinta",
+      "Sexta",
+      "Sábado",
     ];
     return {
-      date: dUtc.toLocaleDateString("en-US", {
+      date: dUtc.toLocaleDateString("pt-BR", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
         timeZone: "UTC",
       }),
-      time: dUtc.toLocaleTimeString("en-US", {
+      time: dUtc.toLocaleTimeString("pt-BR", {
         hour: "2-digit",
         minute: "2-digit",
         timeZone: "UTC",

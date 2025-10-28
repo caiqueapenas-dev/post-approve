@@ -1,21 +1,28 @@
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
-export const uploadToCloudinary = async (file: File): Promise<{ url: string; publicId: string }> => {
+export const uploadToCloudinary = async (
+  file: File
+): Promise<{ url: string; publicId: string }> => {
   const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+  // Determina se é imagem ou vídeo
+  const resourceType = file.type.startsWith("video/") ? "video" : "image";
 
   const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`,
     {
-      method: 'POST',
+      method: "POST",
       body: formData,
     }
   );
 
   if (!response.ok) {
-    throw new Error('Failed to upload image to Cloudinary');
+    const errorData = await response.json();
+    console.error("Cloudinary upload error:", errorData);
+    throw new Error("Failed to upload file to Cloudinary");
   }
 
   const data = await response.json();
@@ -25,12 +32,15 @@ export const uploadToCloudinary = async (file: File): Promise<{ url: string; pub
   };
 };
 
-export const getCloudinaryUrl = (publicId: string, options?: {
-  width?: number;
-  height?: number;
-  crop?: 'fill' | 'fit' | 'scale';
-  quality?: number;
-}): string => {
+export const getCloudinaryUrl = (
+  publicId: string,
+  options?: {
+    width?: number;
+    height?: number;
+    crop?: "fill" | "fit" | "scale";
+    quality?: number;
+  }
+): string => {
   const transformations: string[] = [];
 
   if (options?.width) transformations.push(`w_${options.width}`);
@@ -38,7 +48,8 @@ export const getCloudinaryUrl = (publicId: string, options?: {
   if (options?.crop) transformations.push(`c_${options.crop}`);
   if (options?.quality) transformations.push(`q_${options.quality}`);
 
-  const transformStr = transformations.length > 0 ? `${transformations.join(',')}/` : '';
+  const transformStr =
+    transformations.length > 0 ? `${transformations.join(",")}/` : "";
 
   return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${transformStr}${publicId}`;
 };
