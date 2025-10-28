@@ -17,6 +17,7 @@ export type Client = {
   unique_link_id: string;
   created_at: string;
   updated_at: string;
+  report_link_url: string | null;
 };
 
 export type PostType = "feed" | "carousel" | "story" | "reels";

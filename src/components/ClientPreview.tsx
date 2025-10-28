@@ -12,6 +12,9 @@ import {
   AlertCircle,
   Clock,
   ChevronDown,
+  User,
+  BarChart3,
+  ExternalLink,
 } from "lucide-react";
 
 export const ClientPreview = () => {
@@ -29,6 +32,7 @@ export const ClientPreview = () => {
   const [showApproved, setShowApproved] = useState(false);
   const [selectedDatePosts, setSelectedDatePosts] = useState<Post[]>([]);
   const [showDateModal, setShowDateModal] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
 
   useEffect(() => {
     if (linkId) {
@@ -200,12 +204,27 @@ export const ClientPreview = () => {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <h1 className="text-xl font-bold text-gray-900">
-            {client.display_name || client.name}
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Revise e aprove seus posts agendados
-          </p>
+          <div className="flex items-center gap-4">
+            {client.avatar_url ? (
+              <img
+                src={client.avatar_url}
+                alt="Logo"
+                className="w-12 h-12 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                <User className="w-6 h-6 text-gray-400" />
+              </div>
+            )}
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">
+                {client.display_name || client.name}
+              </h1>
+              <p className="text-sm text-gray-600 mt-1">
+                Revise e aprove seus posts agendados
+              </p>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -233,6 +252,16 @@ export const ClientPreview = () => {
             <Calendar className="w-4 h-4" />
             Calendário
           </button>
+
+          {client.report_link_url && (
+            <button
+              onClick={() => setShowLeaveModal(true)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors bg-white text-gray-700 hover:bg-gray-100 border border-gray-200`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              Resultados
+            </button>
+          )}
         </div>
 
         {viewMode === "calendar" ? (
@@ -408,7 +437,7 @@ export const ClientPreview = () => {
       </div>
 
       {showChangeRequest && selectedPost && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-gray-900">
@@ -476,7 +505,7 @@ export const ClientPreview = () => {
 
       {selectedPost && !showChangeRequest && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50 overflow-auto"
           onClick={() => setSelectedPost(null)}
         >
           <div
@@ -536,7 +565,7 @@ export const ClientPreview = () => {
       {/* Modal de Múltiplos Posts por Dia */}
       {showDateModal && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto"
           onClick={() => setShowDateModal(false)}
         >
           <div
@@ -605,7 +634,7 @@ export const ClientPreview = () => {
       {/* Modal de Posts do Dia (Calendário) */}
       {showDateModal && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 overflow-auto"
           onClick={() => setShowDateModal(false)}
         >
           <div
@@ -676,6 +705,50 @@ export const ClientPreview = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Aviso de Saída */}
+      {showLeaveModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto"
+          onClick={() => setShowLeaveModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-sm w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ExternalLink className="w-6 h-6 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Você está saindo
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Você será redirecionado para o seu painel de resultados em outra
+                página.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowLeaveModal(false)}
+                className="flex-1 px-4 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <a
+                href={client.report_link_url || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShowLeaveModal(false)}
+                className="flex-1 text-center px-4 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors"
+              >
+                Continuar
+              </a>
             </div>
           </div>
         </div>

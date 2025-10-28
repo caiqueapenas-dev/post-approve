@@ -22,6 +22,7 @@ export const ClientManager = () => {
 
   // Estados para edição
   const [editName, setEditName] = useState("");
+  const [editReportLink, setEditReportLink] = useState("");
   const [editDisplayName, setEditDisplayName] = useState("");
   const [editAvatar, setEditAvatar] = useState<File | null>(null);
   const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(
@@ -78,6 +79,7 @@ export const ClientManager = () => {
     setEditDisplayName(client.display_name || "");
     setEditAvatarPreview(client.avatar_url || null);
     setEditAvatar(null);
+    setEditReportLink(client.report_link_url || "");
     setShowEditModal(client);
   };
 
@@ -112,6 +114,7 @@ export const ClientManager = () => {
           name: editName,
           display_name: editDisplayName || editName, // Default para o nome interno
           avatar_url: avatarUrl,
+          report_link_url: editReportLink || null,
         })
         .eq("id", showEditModal.id);
 
@@ -357,6 +360,24 @@ export const ClientManager = () => {
                   required
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
                   placeholder="Internal name (e.g. Company)"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="editReportLink"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  <LinkIcon className="w-4 h-4 inline mr-1" />
+                  Link de Resultados (Reportei)
+                </label>
+                <input
+                  id="editReportLink"
+                  type="url"
+                  value={editReportLink}
+                  onChange={(e) => setEditReportLink(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
+                  placeholder="https://app.reportei.com/..."
                 />
               </div>
 

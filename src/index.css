@@ -11,4 +11,23 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Melhora a aparência do placeholder do datetime-local */
+  input[type="datetime-local"]::-webkit-datetime-edit {
+    color: #9ca3af; /* text-gray-400 */
+  }
+  /* Mostra o texto em preto quando um valor é válido (selecionado) ou focado */
+  input[type="datetime-local"]:focus::-webkit-datetime-edit,
+  input[type="datetime-local"]:valid::-webkit-datetime-edit {
+    color: #111827; /* text-gray-900 */
+  }
+  /* Adiciona um cursor de ponteiro ao ícone do calendário */
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+  }
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
 }

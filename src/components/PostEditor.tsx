@@ -115,7 +115,7 @@ export const PostEditor = ({ post, onClose, onSuccess }: PostEditorProps) => {
                 value={scheduledDate}
                 onChange={(e) => setScheduledDate(e.target.value)}
                 required
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none text-gray-900"
               />
             </div>
 

@@ -10,6 +10,8 @@ import {
   Image as ImageIcon,
   UploadCloud,
   Loader2,
+  User,
+  ChevronsUpDown,
 } from "lucide-react";
 
 type ImageData = {
@@ -28,6 +30,7 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
   const [images, setImages] = useState<ImageData[]>([]);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [compressLoading, setCompressLoading] = useState(false);
+  const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [cropImage, setCropImage] = useState<{
     tempId: string;
@@ -261,6 +264,8 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
   const maxImages = postType === "carousel" ? 10 : 1;
   const canAddMore = images.length < maxImages;
 
+  const selectedClient = clients.find((c) => c.id === selectedClientId);
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
       <h3 className="text-xl font-bold text-gray-900 mb-6">Create New Post</h3>
@@ -270,19 +275,64 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Client
           </label>
-          <select
-            value={selectedClientId}
-            onChange={(e) => setSelectedClientId(e.target.value)}
-            required
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
-          >
-            <option value="">Select a client</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsClientDropdownOpen((prev) => !prev)}
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none flex items-center justify-between text-left"
+            >
+              <span className="flex items-center gap-3">
+                {selectedClient ? (
+                  <>
+                    {selectedClient.avatar_url ? (
+                      <img
+                        src={selectedClient.avatar_url}
+                        alt={selectedClient.name}
+                        className="w-6 h-6 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
+                        <User className="w-4 h-4 text-gray-400" />
+                      </div>
+                    )}
+                    <span className="text-gray-900">{selectedClient.name}</span>
+                  </>
+                ) : (
+                  <span className="text-gray-500">Select a client</span>
+                )}
+              </span>
+              <ChevronsUpDown className="w-4 h-4 text-gray-400" />
+            </button>
+
+            {isClientDropdownOpen && (
+              <div className="absolute top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
+                {clients.map((client) => (
+                  <button
+                    key={client.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedClientId(client.id);
+                      setIsClientDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-100 transition-colors"
+                  >
+                    {client.avatar_url ? (
+                      <img
+                        src={client.avatar_url}
+                        alt={client.name}
+                        className="w-6 h-6 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
+                        <User className="w-4 h-4 text-gray-400" />
+                      </div>
+                    )}
+                    <span className="text-gray-900">{client.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div>
@@ -328,7 +378,7 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
             value={scheduledDate}
             onChange={(e) => setScheduledDate(e.target.value)}
             required
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none text-gray-900"
           />
         </div>
 
