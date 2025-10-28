@@ -12,13 +12,17 @@ import {
   Loader2,
   User,
   ChevronsUpDown,
+  Eye,
 } from "lucide-react";
+import { PostCarousel } from "./PostCarousel";
+import { PostImage } from "../lib/supabase";
 
 type ImageData = {
   file: File;
   preview: string;
   cropFormat: CropFormat;
   tempId: string;
+  fileName: string;
 };
 
 export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
@@ -38,6 +42,7 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
   } | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [showApplyAll, setShowApplyAll] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     fetchClients();
@@ -46,6 +51,15 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
   const fetchClients = async () => {
     const { data } = await supabase.from("clients").select("*").order("name");
     if (data) setClients(data);
+  };
+
+  const getPreviewImages = (): PostImage[] => {
+    return images.map((img, index) => ({
+      id: img.tempId,
+      image_url: img.preview,
+      position: index,
+      crop_format: img.cropFormat,
+    })) as PostImage[]; // Cast as PostImage[] for the prop
   };
   const compressImage = (file: File): Promise<File> => {
     return new Promise((resolve, reject) => {
@@ -132,6 +146,7 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
           preview,
           cropFormat: "4:5", // Já atualizado na Etapa 2, mas mantemos
           tempId: Math.random().toString(36),
+          fileName: compressedFile.name,
         });
       } catch (err) {
         console.error("Failed to compress or read image:", err);
@@ -447,9 +462,12 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
                   alt={`Upload ${index + 1}`}
                   className="w-16 h-16 object-cover rounded-lg"
                 />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">
-                    Image {index + 1}
+                <div className="flex-1 overflow-hidden">
+                  <p
+                    className="text-sm font-medium text-gray-900 truncate"
+                    title={image.fileName}
+                  >
+                    {image.fileName}
                   </p>
                   <p className="text-xs text-gray-500">{image.cropFormat}</p>
                 </div>
@@ -525,15 +543,64 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
             </div>
           </div>
         ) : (
-          <button
-            type="submit"
-            disabled={submitLoading || compressLoading || images.length === 0}
-            className="w-full bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitLoading ? "Criando Post..." : "Create Post"}
-          </button>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setShowPreview(true)}
+              disabled={images.length === 0}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              <Eye className="w-4 h-4" />
+              Preview
+            </button>
+            <button
+              type="submit"
+              disabled={submitLoading || compressLoading || images.length === 0}
+              className="flex-1 bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitLoading ? "Criando Post..." : "Create Post"}
+            </button>
+          </div>
         )}
       </form>
+
+      {showPreview && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-40" // z-40 (abaixo do cropper)
+          onClick={() => setShowPreview(false)}
+        >
+          <div className="max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-white rounded-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+              {images.length > 0 && (
+                <PostCarousel images={getPreviewImages()} />
+              )}
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">
+                    Post Preview
+                  </h3>
+                  <button
+                    onClick={() => setShowPreview(false)}
+                    className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Fechar
+                  </button>
+                </div>
+                {caption && (
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                    {caption}
+                  </p>
+                )}
+                {!caption && (
+                  <p className="text-sm text-gray-500 italic">
+                    Sem legenda definida.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {cropImage && (
         <ImageCropper
