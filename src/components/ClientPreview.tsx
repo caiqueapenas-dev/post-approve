@@ -8,7 +8,6 @@ import {
   MessageSquare,
   Calendar,
   List,
-  X,
   AlertCircle,
   Clock,
   ChevronDown,
@@ -94,7 +93,7 @@ export const ClientPreview = () => {
     setLoading(false);
   };
 
-  const handleDateClick = (date: Date, posts: Post[]) => {
+  const handleDateClick = (_date: Date, posts: Post[]) => {
     setSelectedDatePosts(posts);
     setShowDateModal(true);
   };
@@ -127,6 +126,8 @@ export const ClientPreview = () => {
 
   const formatDate = (date: string) => {
     const d = new Date(date);
+    // Ajusta para UTC
+    const dUtc = new Date(d.getTime() + d.getTimezoneOffset() * 60000);
     const days = [
       "Domingo",
       "Segunda",
@@ -137,16 +138,18 @@ export const ClientPreview = () => {
       "Sábado",
     ];
     return {
-      date: d.toLocaleDateString("pt-BR", {
+      date: dUtc.toLocaleDateString("pt-BR", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
+        timeZone: "UTC",
       }),
-      time: d.toLocaleTimeString("pt-BR", {
+      time: dUtc.toLocaleTimeString("pt-BR", {
         hour: "2-digit",
         minute: "2-digit",
+        timeZone: "UTC",
       }),
-      day: days[d.getDay()],
+      day: days[dUtc.getUTCDay()], // Usa getUTCDay
     };
   };
 

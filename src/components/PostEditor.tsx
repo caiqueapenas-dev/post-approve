@@ -13,7 +13,8 @@ export const PostEditor = ({ post, onClose, onSuccess }: PostEditorProps) => {
   const [caption, setCaption] = useState(post.caption);
   const [scheduledDate, setScheduledDate] = useState(
     // Formata para YYYY-MM-DDTHH:MM exigido pelo input datetime-local
-    new Date(post.scheduled_date).toISOString().slice(0, 16)
+    // Extrai o YYYY-MM-DDTHH:MM do timestamp UTC
+    post.scheduled_date.slice(0, 16)
   );
   const [status, setStatus] = useState<PostStatus>(post.status);
   const [loading, setLoading] = useState(false);
@@ -32,7 +33,7 @@ export const PostEditor = ({ post, onClose, onSuccess }: PostEditorProps) => {
         .from("posts")
         .update({
           caption,
-          scheduled_date: new Date(scheduledDate).toISOString(),
+          scheduled_date: `${scheduledDate}:00Z`, // Adiciona segundos e Z para tratar como UTC
           status,
         })
         .eq("id", post.id);

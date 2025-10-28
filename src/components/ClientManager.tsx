@@ -23,6 +23,7 @@ export const ClientManager = () => {
   // Estados para edição
   const [editName, setEditName] = useState("");
   const [editReportLink, setEditReportLink] = useState("");
+  const [editColor, setEditColor] = useState("#9ca3af");
   const [editDisplayName, setEditDisplayName] = useState("");
   const [editAvatar, setEditAvatar] = useState<File | null>(null);
   const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(
@@ -80,6 +81,7 @@ export const ClientManager = () => {
     setEditAvatarPreview(client.avatar_url || null);
     setEditAvatar(null);
     setEditReportLink(client.report_link_url || "");
+    setEditColor(client.color || "#9ca3af");
     setShowEditModal(client);
   };
 
@@ -115,6 +117,7 @@ export const ClientManager = () => {
           display_name: editDisplayName || editName, // Default para o nome interno
           avatar_url: avatarUrl,
           report_link_url: editReportLink || null,
+          color: editColor,
         })
         .eq("id", showEditModal.id);
 
@@ -167,17 +170,20 @@ export const ClientManager = () => {
           >
             <div className="flex items-start justify-between">
               <div className="flex-1 flex items-center gap-4">
-                {client.avatar_url ? (
-                  <img
-                    src={client.avatar_url}
-                    alt={client.name}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-                    <User className="w-6 h-6 text-gray-400" />
-                  </div>
-                )}
+                <div
+                  className="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center p-0.5"
+                  style={{ backgroundColor: client.color || "#9ca3af" }}
+                >
+                  {client.avatar_url ? (
+                    <img
+                      src={client.avatar_url}
+                      alt={client.name}
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <User className="w-6 h-6 text-white" />
+                  )}
+                </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-1">
                     {client.display_name || client.name}
@@ -325,6 +331,31 @@ export const ClientManager = () => {
                       <X className="w-4 h-4" />
                     </button>
                   )}
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="editColor"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Cor do Cliente
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="editColor"
+                    type="color"
+                    value={editColor}
+                    onChange={(e) => setEditColor(e.target.value)}
+                    className="w-10 h-10 p-0 border-none rounded-lg cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={editColor}
+                    onChange={(e) => setEditColor(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
+                    placeholder="#9ca3af"
+                  />
                 </div>
               </div>
 

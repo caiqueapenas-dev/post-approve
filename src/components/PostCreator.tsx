@@ -14,6 +14,8 @@ import {
   ChevronsUpDown,
   Eye,
   AlertCircle,
+  Layout,
+  Rows,
 } from "lucide-react";
 import { PostCarousel } from "./PostCarousel";
 import { PostImage, Post } from "../lib/supabase";
@@ -26,7 +28,15 @@ type ImageData = {
   fileName: string;
 };
 
-export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
+export const PostCreator = ({
+  onSuccess,
+  showCalendar,
+  onToggleCalendar,
+}: {
+  onSuccess: () => void;
+  showCalendar: boolean;
+  onToggleCalendar: () => void;
+}) => {
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = useState("");
   const [postType, setPostType] = useState<PostType>("feed");
@@ -58,6 +68,7 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
   const [showPreview, setShowPreview] = useState(false);
   const [clientPosts, setClientPosts] = useState<Post[]>([]);
   const [conflictingPosts, setConflictingPosts] = useState<Post[]>([]);
+  const [latestPostDate, setLatestPostDate] = useState<Date | null>(null);
 
   useEffect(() => {
     fetchClients();
@@ -72,6 +83,7 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
     const fetchClientPosts = async () => {
       if (!selectedClientId) {
         setClientPosts([]);
+        setLatestPostDate(null);
         return;
       }
 
@@ -83,6 +95,18 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
 
       if (data) {
         setClientPosts(data as Post[]);
+        if (data.length > 0) {
+          // Encontra a data mais no futuro
+          const latestDate = data.reduce((latest, post) => {
+            const postDate = new Date(post.scheduled_date);
+            return postDate > latest ? postDate : latest;
+          }, new Date(0));
+          setLatestPostDate(latestDate);
+        } else {
+          setLatestPostDate(null);
+        }
+      } else {
+        setLatestPostDate(null);
       }
     };
 
@@ -96,18 +120,18 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
     }
 
     try {
-      // Converte a data do input (que pode não ter fuso) para uma data local
-      const selected = new Date(scheduledDate);
-      const selectedDay = selected.getDate();
-      const selectedMonth = selected.getMonth();
-      const selectedYear = selected.getFullYear();
+      // Adiciona Z para tratar como UTC
+      const selected = new Date(`${scheduledDate}:00Z`);
+      const selectedDay = selected.getUTCDate();
+      const selectedMonth = selected.getUTCMonth();
+      const selectedYear = selected.getUTCFullYear();
 
       const conflicts = clientPosts.filter((post) => {
         const postDate = new Date(post.scheduled_date);
         return (
-          postDate.getDate() === selectedDay &&
-          postDate.getMonth() === selectedMonth &&
-          postDate.getFullYear() === selectedYear
+          postDate.getUTCDate() === selectedDay &&
+          postDate.getUTCMonth() === selectedMonth &&
+          postDate.getUTCFullYear() === selectedYear
         );
       });
 
@@ -294,7 +318,7 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
           {
             client_id: selectedClientId,
             post_type: postType,
-            scheduled_date: scheduledDate,
+            scheduled_date: `${scheduledDate}:00Z`, // Adiciona segundos e Z para tratar como UTC
             caption,
             status: "pending",
           },
@@ -353,10 +377,30 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
   const selectedClient = clients.find((c) => c.id === selectedClientId);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-      <h3 className="text-xl font-bold text-gray-900 mb-6">Create New Post</h3>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-xl font-bold text-gray-900">Create New Post</h3>
+        <button
+          type="button"
+          onClick={onToggleCalendar}
+          className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+          title={showCalendar ? "Ocultar Calendário" : "Mostrar Calendário"}
+        >
+          {showCalendar ? (
+            <Rows className="w-4 h-4" />
+          ) : (
+            <Layout className="w-4 h-4" />
+          )}
+          <span className="text-sm font-medium">
+            {showCalendar ? "Layout Simples" : "Dividir"}
+          </span>
+        </button>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-6 flex-1 overflow-y-auto pr-2"
+      >
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Client
@@ -466,8 +510,24 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
             required
             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none text-gray-900"
           />
+          {latestPostDate && (
+            <div className="mt-2 text-sm text-gray-600">
+              Último post agendado:{" "}
+              <span className="font-medium text-gray-900">
+                {new Date(latestPostDate).toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  timeZone: "UTC",
+                })}
+              </span>
+            </div>
+          )}
           {conflictingPosts.length > 0 && (
             <div className="mt-2 flex items-start gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded-lg">
+              {" "}
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <div className="text-sm">
                 <span className="font-medium">
@@ -482,6 +542,7 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
                         {
                           hour: "2-digit",
                           minute: "2-digit",
+                          timeZone: "UTC",
                         }
                       )}
                     </li>
@@ -491,19 +552,21 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
             </div>
           )}
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Caption
-          </label>
-          <textarea
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            rows={4}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none resize-none"
-            placeholder="Write your caption here..."
-          />
-        </div>
+        {postType !== "story" && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {" "}
+              Caption
+            </label>
+            <textarea
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              rows={4}
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none resize-none"
+              placeholder="Write your caption here..."
+            />
+          </div>
+        )}
 
         <div>
           <div className="flex items-center justify-between mb-2">

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Post } from "../lib/supabase";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type CalendarViewProps = {
   posts: Post[];
@@ -16,34 +15,36 @@ export const CalendarView = ({
   onDateClick,
 }: CalendarViewProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>("weekly");
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(
+    new Date(new Date().setUTCHours(0, 0, 0, 0))
+  );
 
   const getWeekDates = (date: Date) => {
     const week: Date[] = [];
     const current = new Date(date);
-    current.setDate(current.getDate() - current.getDay());
+    current.setUTCDate(current.getUTCDate() - current.getUTCDay());
 
     for (let i = 0; i < 7; i++) {
       week.push(new Date(current));
-      current.setDate(current.getDate() + 1);
+      current.setUTCDate(current.getUTCDate() + 1);
     }
     return week;
   };
 
   const getMonthDates = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth();
+    const firstDay = new Date(Date.UTC(year, month, 1));
+    const lastDay = new Date(Date.UTC(year, month + 1, 0));
     const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - startDate.getDay());
+    startDate.setUTCDate(startDate.getUTCDate() - startDate.getUTCDay());
 
     const dates: Date[] = [];
     const current = new Date(startDate);
 
-    while (current <= lastDay || current.getDay() !== 0) {
+    while (current <= lastDay || current.getUTCDay() !== 0) {
       dates.push(new Date(current));
-      current.setDate(current.getDate() + 1);
+      current.setUTCDate(current.getUTCDate() + 1);
     }
 
     return dates;
@@ -53,23 +54,11 @@ export const CalendarView = ({
     return posts.filter((post) => {
       const postDate = new Date(post.scheduled_date);
       return (
-        postDate.getDate() === date.getDate() &&
-        postDate.getMonth() === date.getMonth() &&
-        postDate.getFullYear() === date.getFullYear()
+        postDate.getUTCDate() === date.getUTCDate() &&
+        postDate.getUTCMonth() === date.getUTCMonth() &&
+        postDate.getUTCFullYear() === date.getUTCFullYear()
       );
     });
-  };
-
-  const navigateWeek = (direction: "prev" | "next") => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() + (direction === "next" ? 7 : -7));
-    setCurrentDate(newDate);
-  };
-
-  const navigateMonth = (direction: "prev" | "next") => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(newDate.getMonth() + (direction === "next" ? 1 : -1));
-    setCurrentDate(newDate);
   };
 
   const dates =
@@ -77,24 +66,20 @@ export const CalendarView = ({
       ? getWeekDates(currentDate)
       : getMonthDates(currentDate);
 
-  const formatMonthYear = (date: Date) => {
-    return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-  };
-
   const handleMonthChange = (month: number) => {
     const newDate = new Date(currentDate);
-    newDate.setMonth(month);
+    newDate.setUTCMonth(month);
     setCurrentDate(newDate);
   };
 
   const handleYearChange = (year: number) => {
     const newDate = new Date(currentDate);
-    newDate.setFullYear(year);
+    newDate.setUTCFullYear(year);
     setCurrentDate(newDate);
   };
 
   const getYearOptions = () => {
-    const currentYear = new Date().getFullYear();
+    const currentYear = new Date().getUTCFullYear();
     const years = [];
     for (let i = currentYear - 5; i <= currentYear + 5; i++) {
       years.push(i);
@@ -119,14 +104,14 @@ export const CalendarView = ({
   const isToday = (date: Date) => {
     const today = new Date();
     return (
-      date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear()
+      date.getUTCDate() === today.getUTCDate() &&
+      date.getUTCMonth() === today.getUTCMonth() &&
+      date.getUTCFullYear() === today.getUTCFullYear()
     );
   };
 
   const isCurrentMonth = (date: Date) => {
-    return date.getMonth() === currentDate.getMonth();
+    return date.getUTCMonth() === currentDate.getUTCMonth();
   };
 
   return (
@@ -134,7 +119,9 @@ export const CalendarView = ({
       <div className="flex flex-col gap-4">
         <div className="flex gap-2">
           <button
-            onClick={() => setCurrentDate(new Date())}
+            onClick={() =>
+              setCurrentDate(new Date(new Date().setUTCHours(0, 0, 0, 0)))
+            }
             className="px-4 py-2 rounded-lg font-medium transition-colors bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
           >
             Hoje
@@ -164,7 +151,7 @@ export const CalendarView = ({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <select
-              value={currentDate.getMonth()}
+              value={currentDate.getUTCMonth()}
               onChange={(e) => handleMonthChange(Number(e.target.value))}
               className="p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900"
             >
@@ -175,7 +162,7 @@ export const CalendarView = ({
               ))}
             </select>
             <select
-              value={currentDate.getFullYear()}
+              value={currentDate.getUTCFullYear()}
               onChange={(e) => handleYearChange(Number(e.target.value))}
               className="p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900"
             >
@@ -208,8 +195,11 @@ export const CalendarView = ({
                     isToday(date) ? "text-gray-900" : "text-gray-700"
                   }`}
                 >
-                  {date.toLocaleDateString("pt-BR", { weekday: "long" })} -{" "}
-                  {date.getDate()}
+                  {date.toLocaleDateString("pt-BR", {
+                    weekday: "long",
+                    timeZone: "UTC",
+                  })}{" "}
+                  - {date.getUTCDate()}
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                   {dayPosts.map((post) => (
@@ -235,6 +225,7 @@ export const CalendarView = ({
                             {
                               hour: "2-digit",
                               minute: "2-digit",
+                              timeZone: "UTC",
                             }
                           )}
                         </p>
@@ -266,12 +257,10 @@ export const CalendarView = ({
                 type="button"
                 key={date.toISOString()}
                 onClick={() =>
-                  onDateClick && dayPosts.length > 0
-                    ? onDateClick(date, dayPosts)
-                    : undefined
+                  onDateClick ? onDateClick(date, dayPosts) : undefined
                 }
                 className={`min-h-[100px] p-2 rounded-lg border text-left ${
-                  onDateClick && dayPosts.length > 0
+                  onDateClick
                     ? "cursor-pointer hover:bg-gray-100 transition-colors"
                     : ""
                 } ${
@@ -291,24 +280,30 @@ export const CalendarView = ({
                       : "text-gray-600"
                   }`}
                 >
-                  {date.getDate()}
+                  {date.getUTCDate()}
                 </div>
                 {dayPosts.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {dayPosts.slice(0, 3).map((post) => (
                       <div
                         key={post.id}
-                        onClick={(e) => {
-                          if (!onDateClick) {
-                            // Admin view behavior
-                            e.stopPropagation();
-                            onPostClick(post);
-                          }
+                        style={{
+                          backgroundColor: post.client?.color || "#111827",
                         }}
-                        className={`w-2 h-2 rounded-full bg-gray-900 ${
+                        onClick={(e) => {
+                          // Se onDateClick (modal do dia) estiver ativo, o clique no dot não faz nada
+                          if (onDateClick) {
+                            e.stopPropagation();
+                            return;
+                          }
+                          // Se for admin (sem onDateClick), o clique no dot abre o editor
+                          e.stopPropagation();
+                          onPostClick(post);
+                        }}
+                        className={`w-2 h-2 rounded-full ${
                           !onDateClick
                             ? "hover:scale-125 transition-transform cursor-pointer"
-                            : ""
+                            : "cursor-default" // Clicável é o dia, não o dot
                         }`}
                         title={
                           post.client?.name ||
@@ -317,6 +312,7 @@ export const CalendarView = ({
                             {
                               hour: "2-digit",
                               minute: "2-digit",
+                              timeZone: "UTC",
                             }
                           )
                         }

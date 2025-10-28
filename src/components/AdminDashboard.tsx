@@ -11,6 +11,7 @@ export const AdminDashboard = () => {
     "posts"
   );
   const [refreshPosts, setRefreshPosts] = useState(0);
+  const [showSplitCalendar, setShowSplitCalendar] = useState(true);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -73,11 +74,25 @@ export const AdminDashboard = () => {
         ) : activeTab === "calendar" ? (
           <AdminCalendarView />
         ) : (
-          <div className="space-y-8">
-            <PostCreator
-              onSuccess={() => setRefreshPosts((prev) => prev + 1)}
-            />
-            <PostList refresh={refreshPosts} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-8 space-y-8 lg:space-y-0">
+            <div
+              className={`space-y-8 ${
+                showSplitCalendar ? "lg:col-span-1" : "lg:col-span-2"
+              }`}
+            >
+              <PostCreator
+                onSuccess={() => setRefreshPosts((prev) => prev + 1)}
+                showCalendar={showSplitCalendar}
+                onToggleCalendar={() => setShowSplitCalendar((prev) => !prev)}
+              />
+              {!showSplitCalendar && <PostList refresh={refreshPosts} />}
+            </div>
+            {showSplitCalendar && (
+              <div className="lg:col-span-1 space-y-8">
+                <AdminCalendarView showTitle={false} />
+                <PostList refresh={refreshPosts} />
+              </div>
+            )}
           </div>
         )}
       </div>

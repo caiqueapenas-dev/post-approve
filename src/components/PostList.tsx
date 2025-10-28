@@ -7,7 +7,6 @@ import {
   Clock,
   AlertCircle,
   Trash2,
-  Edit,
 } from "lucide-react";
 import { PostEditor } from "./PostEditor";
 
@@ -70,6 +69,8 @@ export const PostList = ({ refresh }: { refresh: number }) => {
 
   const formatDate = (date: string) => {
     const d = new Date(date);
+    // Ajusta para UTC
+    const dUtc = new Date(d.getTime() + d.getTimezoneOffset() * 60000);
     const days = [
       "Sunday",
       "Monday",
@@ -80,16 +81,18 @@ export const PostList = ({ refresh }: { refresh: number }) => {
       "Saturday",
     ];
     return {
-      date: d.toLocaleDateString("en-US", {
+      date: dUtc.toLocaleDateString("en-US", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
+        timeZone: "UTC",
       }),
-      time: d.toLocaleTimeString("en-US", {
+      time: dUtc.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
+        timeZone: "UTC",
       }),
-      day: days[d.getDay()],
+      day: days[dUtc.getUTCDay()],
     };
   };
 

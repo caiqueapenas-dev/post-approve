@@ -14,6 +14,7 @@ export type Client = {
   name: string;
   display_name: string | null;
   avatar_url: string | null;
+  color: string | null;
   unique_link_id: string;
   created_at: string;
   updated_at: string;
