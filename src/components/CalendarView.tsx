@@ -215,10 +215,18 @@ export const CalendarView = ({
                           className="w-full h-24 object-cover"
                         />
                       )}
-                      <div className="p-2">
-                        <p className="text-xs capitalize font-medium text-gray-800">
-                          {post.post_type}
-                        </p>
+                      <div className="p-2 space-y-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <div
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{
+                              backgroundColor: post.client?.color || "#111827",
+                            }}
+                          />
+                          <p className="text-xs capitalize font-medium text-gray-800">
+                            {post.post_type}
+                          </p>
+                        </div>
                         <p className="text-xs text-gray-600">
                           {new Date(post.scheduled_date).toLocaleTimeString(
                             "pt-BR",
@@ -228,6 +236,9 @@ export const CalendarView = ({
                               timeZone: "UTC",
                             }
                           )}
+                        </p>
+                        <p className="text-xs text-gray-500 capitalize">
+                          {post.status.replace("_", " ")}
                         </p>
                       </div>
                     </button>

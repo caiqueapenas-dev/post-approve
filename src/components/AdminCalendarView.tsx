@@ -201,10 +201,28 @@ export const AdminCalendarView = ({
                     )}
                     <div className="flex-1 overflow-hidden">
                       <p className="text-sm font-medium text-gray-900 truncate">
-                        {post.caption || "Sem legenda"}
+                        {post.post_type === "story"
+                          ? "Story"
+                          : post.caption || "Sem legenda"}
                       </p>
-                      <p className="text-sm text-gray-500">
-                        {post.client?.name} -{" "}
+                      <div className="flex items-center gap-2 mt-1">
+                        {post.client?.avatar_url ? (
+                          <img
+                            src={post.client.avatar_url}
+                            alt={post.client.name}
+                            className="w-4 h-4 rounded-full object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                            <User className="w-3 h-3 text-gray-400" />
+                          </div>
+                        )}
+                        <span className="text-sm text-gray-600 truncate">
+                          {post.client?.name}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-500 capitalize mt-1">
+                        {post.status.replace("_", " ")} -{" "}
                         {new Date(post.scheduled_date).toLocaleTimeString(
                           "pt-BR",
                           {
