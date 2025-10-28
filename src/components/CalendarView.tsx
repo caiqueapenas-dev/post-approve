@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Post } from "../lib/supabase";
+import { Post, PostStatus } from "../lib/supabase";
 
 type CalendarViewProps = {
   posts: Post[];
@@ -112,6 +112,21 @@ export const CalendarView = ({
 
   const isCurrentMonth = (date: Date) => {
     return date.getUTCMonth() === currentDate.getUTCMonth();
+  };
+
+  const getStatusColorClass = (status: PostStatus) => {
+    switch (status) {
+      case "pending":
+        return "text-yellow-800";
+      case "change_requested":
+        return "text-orange-800";
+      case "approved":
+        return "text-green-800";
+      case "published":
+        return "text-blue-800";
+      default:
+        return "text-gray-500";
+    }
   };
 
   return (
@@ -237,7 +252,11 @@ export const CalendarView = ({
                             }
                           )}
                         </p>
-                        <p className="text-xs text-gray-500 capitalize">
+                        <p
+                          className={`text-xs capitalize font-medium ${getStatusColorClass(
+                            post.status
+                          )}`}
+                        >
                           {post.status.replace("_", " ")}
                         </p>
                       </div>

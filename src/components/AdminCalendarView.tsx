@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase, Post, Client, PostType } from "../lib/supabase";
+import { supabase, Post, Client, PostType, PostStatus } from "../lib/supabase";
 import { CalendarView } from "./CalendarView";
 import { User, ImageIcon, ListFilter, ChevronsUpDown } from "lucide-react";
 import { PostEditor } from "./PostEditor";
@@ -56,7 +56,20 @@ export const AdminCalendarView = ({
     const { data } = await supabase.from("clients").select("*").order("name");
     if (data) setClients(data);
   };
-
+  const getStatusColorClass = (status: PostStatus) => {
+    switch (status) {
+      case "pending":
+        return "text-yellow-800";
+      case "change_requested":
+        return "text-orange-800";
+      case "approved":
+        return "text-green-800";
+      case "published":
+        return "text-blue-800";
+      default:
+        return "text-gray-500";
+    }
+  };
   useEffect(() => {
     const applyFilters = () => {
       let tempPosts = posts;
@@ -221,16 +234,22 @@ export const AdminCalendarView = ({
                           {post.client?.name}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500 capitalize mt-1">
+                      <p
+                        className={`text-sm capitalize mt-1 font-medium ${getStatusColorClass(
+                          post.status
+                        )}`}
+                      >
                         {post.status.replace("_", " ")} -{" "}
-                        {new Date(post.scheduled_date).toLocaleTimeString(
-                          "pt-BR",
-                          {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            timeZone: "UTC",
-                          }
-                        )}
+                        <span className="font-normal text-gray-500">
+                          {new Date(post.scheduled_date).toLocaleTimeString(
+                            "pt-BR",
+                            {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              timeZone: "UTC",
+                            }
+                          )}
+                        </span>
                       </p>
                     </div>
                     <button
