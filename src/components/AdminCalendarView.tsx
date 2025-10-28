@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { supabase, Post } from "../lib/supabase";
+import { supabase, Post, Client, PostType } from "../lib/supabase";
 import { CalendarView } from "./CalendarView";
-import { User } from "lucide-react";
+import { User, ImageIcon, ListFilter, ChevronsUpDown } from "lucide-react";
 import { PostEditor } from "./PostEditor";
 
 export const AdminCalendarView = ({
@@ -16,9 +16,13 @@ export const AdminCalendarView = ({
     date: Date;
     posts: Post[];
   } | null>(null);
-
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>("all");
+  const [selectedPostType, setSelectedPostType] = useState<string>("all");
+  const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
   useEffect(() => {
     fetchPosts();
+    fetchClients();
   }, []);
 
   const fetchPosts = async () => {
@@ -48,7 +52,31 @@ export const AdminCalendarView = ({
   const handleDateClick = (date: Date, posts: Post[]) => {
     setDayModal({ date, posts });
   };
+  const fetchClients = async () => {
+    const { data } = await supabase.from("clients").select("*").order("name");
+    if (data) setClients(data);
+  };
 
+  useEffect(() => {
+    const applyFilters = () => {
+      let tempPosts = posts;
+
+      if (selectedClientId !== "all") {
+        tempPosts = tempPosts.filter(
+          (post) => post.client_id === selectedClientId
+        );
+      }
+
+      if (selectedPostType !== "all") {
+        tempPosts = tempPosts.filter(
+          (post) => post.post_type === selectedPostType
+        );
+      }
+      setFilteredPosts(tempPosts);
+    };
+
+    applyFilters();
+  }, [posts, selectedClientId, selectedPostType]);
   if (loading) {
     return (
       <div className="bg-white rounded-xl p-12 text-center shadow-sm">
@@ -64,8 +92,53 @@ export const AdminCalendarView = ({
           Calendário de Posts
         </h2>
       )}
+      <div className="flex flex-col gap-4 mb-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex-1 min-w-[150px]">
+            <label
+              htmlFor="clientFilter"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Cliente
+            </label>
+            <select
+              id="clientFilter"
+              value={selectedClientId}
+              onChange={(e) => setSelectedClientId(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900"
+            >
+              <option value="all">Todos os Clientes</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1 min-w-[150px]">
+            <label
+              htmlFor="postTypeFilter"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Formato
+            </label>
+            <select
+              id="postTypeFilter"
+              value={selectedPostType}
+              onChange={(e) => setSelectedPostType(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900"
+            >
+              <option value="all">Todos os Formatos</option>
+              <option value="feed">Feed</option>
+              <option value="carousel">Carrossel</option>
+              <option value="story">Story</option>
+              <option value="reels">Reels</option>
+            </select>
+          </div>
+        </div>
+      </div>
       <CalendarView
-        posts={posts}
+        posts={filteredPosts}
         onPostClick={handlePostClick}
         onDateClick={handleDateClick}
       />
@@ -115,28 +188,23 @@ export const AdminCalendarView = ({
                     key={post.id}
                     className="flex gap-4 p-4 border border-gray-200 rounded-lg items-center"
                   >
-                    <div
-                      className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center"
-                      style={{
-                        backgroundColor: post.client?.color || "#111827",
-                      }}
-                    >
-                      {post.client?.avatar_url ? (
-                        <img
-                          src={post.client.avatar_url}
-                          alt={post.client.name}
-                          className="w-full h-full rounded-full object-cover"
-                        />
-                      ) : (
-                        <User className="w-5 h-5 text-white" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">
-                        {post.client?.name}
-                      </h4>
-                      <p className="text-sm text-gray-600 capitalize">
-                        {post.post_type} -{" "}
+                    {post.images && post.images.length > 0 ? (
+                      <img
+                        src={post.images[0].image_url}
+                        alt="Preview"
+                        className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <ImageIcon className="w-6 h-6 text-gray-400" />
+                      </div>
+                    )}
+                    <div className="flex-1 overflow-hidden">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {post.caption || "Sem legenda"}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {post.client?.name} -{" "}
                         {new Date(post.scheduled_date).toLocaleTimeString(
                           "pt-BR",
                           {

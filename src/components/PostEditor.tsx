@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { supabase, Post, PostStatus } from "../lib/supabase";
-import { X, Calendar, MessageSquare, Save } from "lucide-react";
+import { X, Calendar, MessageSquare, Save, Trash2 } from "lucide-react";
 import { PostCarousel } from "./PostCarousel";
 
 type PostEditorProps = {
@@ -54,6 +54,28 @@ export const PostEditor = ({ post, onClose, onSuccess }: PostEditorProps) => {
     } catch (error) {
       console.error("Error updating post:", error);
       alert("Falha ao atualizar o post.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleDelete = async () => {
+    if (
+      !confirm(
+        "Tem certeza que deseja excluir este post? Esta ação não pode ser desfeita."
+      )
+    ) {
+      return;
+    }
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.from("posts").delete().eq("id", post.id);
+
+      if (error) throw error;
+      onSuccess(); // Fecha o modal e atualiza a lista
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      alert("Falha ao excluir o post.");
     } finally {
       setLoading(false);
     }
@@ -159,6 +181,15 @@ export const PostEditor = ({ post, onClose, onSuccess }: PostEditorProps) => {
           </div>
 
           <div className="p-6 bg-gray-50 rounded-b-2xl flex gap-3 sticky bottom-0">
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={loading}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4" />
+              Excluir
+            </button>
             <button
               type="button"
               onClick={onClose}

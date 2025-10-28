@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { CropFormat } from "../lib/supabase";
+import { CropFormat, PostType } from "../lib/supabase";
 import { X } from "lucide-react";
 
 type ImageCropperProps = {
@@ -7,6 +7,7 @@ type ImageCropperProps = {
   onCrop: (croppedFile: File, format: CropFormat) => void;
   onCancel: () => void;
   initialFormat?: CropFormat;
+  postType?: PostType;
 };
 
 export const ImageCropper = ({
@@ -14,6 +15,7 @@ export const ImageCropper = ({
   onCrop,
   onCancel,
   initialFormat = "1:1",
+  postType,
 }: ImageCropperProps) => {
   const [format, setFormat] = useState<CropFormat>(initialFormat);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -118,11 +120,17 @@ export const ImageCropper = ({
               {(["1:1", "4:5", "9:16"] as CropFormat[]).map((f) => (
                 <button
                   key={f}
+                  type="button"
                   onClick={() => setFormat(f)}
+                  disabled={postType === "story" && f !== "9:16"}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     format === f
                       ? "bg-gray-900 text-white"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  } ${
+                    postType === "story" && f !== "9:16"
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
                   }`}
                 >
                   {f}

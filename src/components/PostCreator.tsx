@@ -233,7 +233,7 @@ export const PostCreator = ({
         newImages.push({
           file: compressedFile,
           preview,
-          cropFormat: "4:5", // Já atualizado na Etapa 2, mas mantemos
+          cropFormat: postType === "story" ? "9:16" : "4:5", // 9:16 para story, 4:5 para outros
           tempId: Math.random().toString(36),
           fileName: compressedFile.name,
         });
@@ -477,8 +477,19 @@ export const PostCreator = ({
                   type="button"
                   onClick={() => {
                     setPostType(type);
+                    if (type === "story") {
+                      // Força 9:16 para story
+                      setImages((prevImages) =>
+                        prevImages.map((img) => ({
+                          ...img,
+                          cropFormat: "9:16",
+                        }))
+                      );
+                    }
                     if (type !== "carousel" && images.length > 1) {
-                      setImages([images[0]]);
+                      // Se não for carrossel, limita a 1 imagem (mantém a primeira)
+                      // Se o tipo for story, a imagem já terá o crop 9:16
+                      setImages((prevImages) => [prevImages[0]]);
                     }
                   }}
                   className={`px-4 py-3 rounded-lg font-medium capitalize transition-colors ${
@@ -768,6 +779,7 @@ export const PostCreator = ({
           initialFormat={
             images.find((img) => img.tempId === cropImage.tempId)?.cropFormat
           }
+          postType={postType}
         />
       )}
     </div>

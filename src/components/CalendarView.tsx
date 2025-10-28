@@ -14,7 +14,7 @@ export const CalendarView = ({
   onPostClick,
   onDateClick,
 }: CalendarViewProps) => {
-  const [viewMode, setViewMode] = useState<ViewMode>("weekly");
+  const [viewMode, setViewMode] = useState<ViewMode>("monthly");
   const [currentDate, setCurrentDate] = useState(
     new Date(new Date().setUTCHours(0, 0, 0, 0))
   );
