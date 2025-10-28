@@ -971,22 +971,7 @@ export const PostCreator = ({
                         />
                       )}
                   </div>
-                  {/* Botão Crop (Apenas para imagens, funciona em bulk) */}
-                  {!isVideo && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setCropImage({
-                          // setCropImage definido
-                          tempId: image.tempId,
-                          preview: image.preview,
-                        })
-                      }
-                      className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      Crop
-                    </button>
-                  )}
+
                   {/* Botões (agrupados para melhor layout) */}
                   <div
                     className={`flex ${
