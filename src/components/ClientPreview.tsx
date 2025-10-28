@@ -200,7 +200,9 @@ export const ClientPreview = () => {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <h1 className="text-xl font-bold text-gray-900">{client.name}</h1>
+          <h1 className="text-xl font-bold text-gray-900">
+            {client.display_name || client.name}
+          </h1>
           <p className="text-sm text-gray-600 mt-1">
             Revise e aprove seus posts agendados
           </p>
@@ -357,23 +359,27 @@ export const ClientPreview = () => {
                 </button>
                 {showApproved && (
                   <div className="space-y-4 p-6 border-t border-gray-100">
-                    {approvedPosts.map((post) => {
-                      const dateInfo = formatDate(post.scheduled_date);
-                      return (
-                        <div
-                          key={post.id}
-                          className="pb-4 border-b border-gray-100 last:border-b-0"
-                        >
-                          {post.images && post.images.length > 0 && (
-                            <PostCarousel images={post.images} />
-                          )}
-                          <div className="p-4 space-y-3">
-                            <div className="flex items-start justify-between">
-                              <div className="space-y-2">
+                    {showApproved && (
+                      <div className="space-y-4 p-6 border-t border-gray-100">
+                        {approvedPosts.map((post) => {
+                          const dateInfo = formatDate(post.scheduled_date);
+                          return (
+                            <div
+                              key={post.id}
+                              className="flex gap-4 p-4 border border-gray-200 rounded-lg"
+                            >
+                              {post.images && post.images.length > 0 && (
+                                <img
+                                  src={post.images[0].image_url}
+                                  alt="Post preview"
+                                  className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                                />
+                              )}
+                              <div className="flex-1 space-y-1.5">
                                 <div className="flex items-center gap-2">
                                   <Calendar className="w-4 h-4 text-gray-600" />
                                   <span className="text-sm font-medium text-gray-900">
-                                    {dateInfo.date} - {dateInfo.day}
+                                    {dateInfo.date} - {dateInfo.time}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -382,19 +388,17 @@ export const ClientPreview = () => {
                                     {post.post_type}
                                   </span>
                                 </div>
+                                {post.caption && (
+                                  <p className="text-sm text-gray-700 line-clamp-2">
+                                    {post.caption}
+                                  </p>
+                                )}
                               </div>
                             </div>
-                            {post.caption && (
-                              <div className="bg-gray-50 rounded-lg p-4">
-                                <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                                  {post.caption}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -479,9 +483,11 @@ export const ClientPreview = () => {
             className="max-w-2xl w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-white rounded-2xl overflow-hidden">
+            <div className="bg-white rounded-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
               {selectedPost.images && selectedPost.images.length > 0 && (
-                <PostCarousel images={selectedPost.images} />
+                <div className="max-h-[60vh] overflow-hidden">
+                  <PostCarousel images={selectedPost.images} />
+                </div>
               )}
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">

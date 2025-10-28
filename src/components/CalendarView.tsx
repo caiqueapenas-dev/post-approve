@@ -204,53 +204,61 @@ export const CalendarView = ({
       </div>
 
       {viewMode === "weekly" ? (
-        <div className="grid grid-cols-7 gap-2">
-          {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
-            <div
-              key={day}
-              className="text-center text-sm font-medium text-gray-600 py-2"
-            >
-              {day}
-            </div>
-          ))}
+        <div className="space-y-2">
+          {/* Headers removidos para a visualização vertical */}
           {dates.map((date) => {
             const dayPosts = getPostsForDate(date);
             return (
               <div
                 key={date.toISOString()}
-                className={`min-h-[120px] p-2 rounded-lg border ${
+                className={`p-4 rounded-lg border ${
                   isToday(date)
                     ? "border-gray-900 bg-gray-50"
                     : "border-gray-200 bg-white"
                 }`}
               >
                 <div
-                  className={`text-sm font-medium mb-2 ${
-                    isToday(date) ? "text-gray-900" : "text-gray-600"
+                  className={`text-sm font-semibold mb-3 capitalize ${
+                    isToday(date) ? "text-gray-900" : "text-gray-700"
                   }`}
                 >
+                  {date.toLocaleDateString("pt-BR", { weekday: "long" })} -{" "}
                   {date.getDate()}
                 </div>
-                <div className="space-y-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                   {dayPosts.map((post) => (
                     <button
                       key={post.id}
                       onClick={() => onPostClick(post)}
-                      className="w-full text-left p-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs transition-colors"
+                      className="w-full text-left bg-gray-100 hover:bg-gray-200 rounded-lg overflow-hidden transition-colors border"
                     >
                       {post.images && post.images.length > 0 && (
                         <img
                           src={post.images[0].image_url}
-                          alt=""
-                          className="w-full h-12 object-cover rounded mb-1"
+                          alt="Preview"
+                          className="w-full h-24 object-cover"
                         />
                       )}
-                      <p className="truncate font-medium">
-                        {post.client?.name}
-                      </p>
+                      <div className="p-2">
+                        <p className="text-xs capitalize font-medium text-gray-800">
+                          {post.post_type}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          {new Date(post.scheduled_date).toLocaleTimeString(
+                            "pt-BR",
+                            {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }
+                          )}
+                        </p>
+                      </div>
                     </button>
                   ))}
                 </div>
+                {dayPosts.length === 0 && (
+                  <p className="text-xs text-gray-500">Nenhum post.</p>
+                )}
               </div>
             );
           })}
