@@ -13,9 +13,10 @@ import {
   User,
   ChevronsUpDown,
   Eye,
+  AlertCircle,
 } from "lucide-react";
 import { PostCarousel } from "./PostCarousel";
-import { PostImage } from "../lib/supabase";
+import { PostImage, Post } from "../lib/supabase";
 
 type ImageData = {
   file: File;
@@ -29,7 +30,19 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = useState("");
   const [postType, setPostType] = useState<PostType>("feed");
-  const [scheduledDate, setScheduledDate] = useState("");
+
+  const getDefaultScheduledDate = () => {
+    const now = new Date();
+    now.setHours(18, 0, 0, 0); // Define para 18:00:00
+
+    const year = now.getFullYear();
+    const month = (now.getMonth() + 1).toString().padStart(2, "0");
+    const day = now.getDate().toString().padStart(2, "0");
+
+    return `${year}-${month}-${day}T18:00`;
+  };
+
+  const [scheduledDate, setScheduledDate] = useState(getDefaultScheduledDate());
   const [caption, setCaption] = useState("");
   const [images, setImages] = useState<ImageData[]>([]);
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -43,6 +56,8 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [showApplyAll, setShowApplyAll] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [clientPosts, setClientPosts] = useState<Post[]>([]);
+  const [conflictingPosts, setConflictingPosts] = useState<Post[]>([]);
 
   useEffect(() => {
     fetchClients();
@@ -52,6 +67,56 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
     const { data } = await supabase.from("clients").select("*").order("name");
     if (data) setClients(data);
   };
+
+  useEffect(() => {
+    const fetchClientPosts = async () => {
+      if (!selectedClientId) {
+        setClientPosts([]);
+        return;
+      }
+
+      // Busca apenas os dados necessários
+      const { data } = await supabase
+        .from("posts")
+        .select("id, scheduled_date")
+        .eq("client_id", selectedClientId);
+
+      if (data) {
+        setClientPosts(data as Post[]);
+      }
+    };
+
+    fetchClientPosts();
+  }, [selectedClientId]);
+
+  useEffect(() => {
+    if (!scheduledDate || clientPosts.length === 0) {
+      setConflictingPosts([]);
+      return;
+    }
+
+    try {
+      // Converte a data do input (que pode não ter fuso) para uma data local
+      const selected = new Date(scheduledDate);
+      const selectedDay = selected.getDate();
+      const selectedMonth = selected.getMonth();
+      const selectedYear = selected.getFullYear();
+
+      const conflicts = clientPosts.filter((post) => {
+        const postDate = new Date(post.scheduled_date);
+        return (
+          postDate.getDate() === selectedDay &&
+          postDate.getMonth() === selectedMonth &&
+          postDate.getFullYear() === selectedYear
+        );
+      });
+
+      setConflictingPosts(conflicts);
+    } catch (e) {
+      // Lida com datas inválidas enquanto o usuário digita
+      setConflictingPosts([]);
+    }
+  }, [scheduledDate, clientPosts]);
 
   const getPreviewImages = (): PostImage[] => {
     return images.map((img, index) => ({
@@ -266,7 +331,7 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
 
       setSelectedClientId("");
       setPostType("feed");
-      setScheduledDate("");
+      setScheduledDate(getDefaultScheduledDate());
       setCaption("");
       setImages([]);
       onSuccess();
@@ -401,6 +466,30 @@ export const PostCreator = ({ onSuccess }: { onSuccess: () => void }) => {
             required
             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none text-gray-900"
           />
+          {conflictingPosts.length > 0 && (
+            <div className="mt-2 flex items-start gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded-lg">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <div className="text-sm">
+                <span className="font-medium">
+                  Este cliente já tem {conflictingPosts.length} post(s) neste
+                  dia:
+                </span>
+                <ul className="list-disc list-inside mt-1">
+                  {conflictingPosts.map((post) => (
+                    <li key={post.id}>
+                      {new Date(post.scheduled_date).toLocaleTimeString(
+                        "pt-BR",
+                        {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
         </div>
 
         <div>
