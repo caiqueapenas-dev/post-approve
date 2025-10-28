@@ -3,7 +3,15 @@ import { useParams } from "./Router";
 import { supabase, Post, Client } from "../lib/supabase";
 import { PostCarousel } from "./PostCarousel";
 import { CalendarView } from "./CalendarView";
-import { CheckCircle2, MessageSquare, Calendar, List, X } from "lucide-react";
+import {
+  CheckCircle2,
+  MessageSquare,
+  Calendar,
+  List,
+  X,
+  AlertCircle,
+  Clock,
+} from "lucide-react";
 
 export const ClientPreview = () => {
   const { linkId } = useParams();
@@ -93,21 +101,21 @@ export const ClientPreview = () => {
   const formatDate = (date: string) => {
     const d = new Date(date);
     const days = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
+      "Domingo",
+      "Segunda",
+      "Terça",
+      "Quarta",
+      "Quinta",
+      "Sexta",
+      "Sábado",
     ];
     return {
-      date: d.toLocaleDateString("en-US", {
+      date: d.toLocaleDateString("pt-BR", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
       }),
-      time: d.toLocaleTimeString("en-US", {
+      time: d.toLocaleTimeString("pt-BR", {
         hour: "2-digit",
         minute: "2-digit",
       }),
@@ -116,20 +124,43 @@ export const ClientPreview = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const styles = {
-      pending: "bg-yellow-100 text-yellow-800",
-      change_requested: "bg-orange-100 text-orange-800",
-      approved: "bg-green-100 text-green-800",
-      published: "bg-blue-100 text-blue-800",
+    const statusMap = {
+      pending: {
+        text: "Pendente",
+        className: "bg-yellow-100 text-yellow-800",
+        icon: <Clock className="w-3 h-3" />,
+      },
+      change_requested: {
+        text: "Alteração Solicitada",
+        className: "bg-orange-100 text-orange-800",
+        icon: <AlertCircle className="w-3 h-3" />,
+      },
+      approved: {
+        text: "Aprovado",
+        className: "bg-green-100 text-green-800",
+        icon: <CheckCircle2 className="w-3 h-3" />,
+      },
+      published: {
+        text: "Publicado",
+        className: "bg-blue-100 text-blue-800",
+        icon: <CheckCircle2 className="w-3 h-3" />,
+      },
+    };
+
+    const { text, className, icon } = statusMap[
+      status as keyof typeof statusMap
+    ] || {
+      text: status,
+      className: "bg-gray-100 text-gray-800",
+      icon: null,
     };
 
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${
-          styles[status as keyof typeof styles]
-        }`}
+        className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${className}`}
       >
-        {status.replace("_", " ")}
+        {icon}
+        <span>{text}</span>
       </span>
     );
   };
@@ -139,10 +170,10 @@ export const ClientPreview = () => {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Client Not Found
+            Cliente Não Encontrado
           </h1>
           <p className="text-gray-600">
-            The link you followed may be invalid or expired.
+            O link que você seguiu pode estar inválido ou expirado.{" "}
           </p>
         </div>
       </div>
@@ -155,7 +186,7 @@ export const ClientPreview = () => {
         <div className="max-w-4xl mx-auto px-4 py-4">
           <h1 className="text-xl font-bold text-gray-900">{client.name}</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Review and approve your scheduled posts
+            Revise e aprove seus posts agendados
           </p>
         </div>
       </header>
@@ -171,7 +202,7 @@ export const ClientPreview = () => {
             }`}
           >
             <List className="w-4 h-4" />
-            List
+            Lista
           </button>
           <button
             onClick={() => setViewMode("calendar")}
@@ -182,7 +213,7 @@ export const ClientPreview = () => {
             }`}
           >
             <Calendar className="w-4 h-4" />
-            Calendar
+            Calendário
           </button>
         </div>
 
@@ -259,7 +290,7 @@ export const ClientPreview = () => {
                             <MessageSquare className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
                             <div className="flex-1">
                               <p className="text-sm font-medium text-orange-900 mb-2">
-                                Your Change Request
+                                Sua Solicitação de Alteração
                               </p>
                               <p className="text-sm text-orange-700">
                                 {
@@ -279,7 +310,7 @@ export const ClientPreview = () => {
 
             {posts.length === 0 && (
               <div className="bg-white rounded-xl p-12 text-center">
-                <p className="text-gray-600">No posts scheduled yet.</p>
+                <p className="text-gray-600">Nenhum post agendado ainda.</p>
               </div>
             )}
           </div>
@@ -304,23 +335,23 @@ export const ClientPreview = () => {
             <form onSubmit={handleChangeRequest} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Change Type
+                  Tipo de Alteração
                 </label>
                 <select
                   value={changeType}
                   onChange={(e) => setChangeType(e.target.value as any)}
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
                 >
-                  <option value="visual">Visual/Image</option>
-                  <option value="date">Date/Time</option>
-                  <option value="caption">Caption</option>
-                  <option value="other">Other</option>
+                  <option value="visual">Visual/Imagem</option>
+                  <option value="date">Data/Hora</option>
+                  <option value="caption">Legenda</option>
+                  <option value="other">Outro</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Message
+                  Mensagem
                 </label>
                 <textarea
                   value={changeMessage}
@@ -328,7 +359,7 @@ export const ClientPreview = () => {
                   required
                   rows={4}
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none resize-none"
-                  placeholder="Please describe the changes you'd like..."
+                  placeholder="Por favor, descreva as alterações que você gostaria..."
                 />
               </div>
 
@@ -338,14 +369,14 @@ export const ClientPreview = () => {
                   onClick={() => setShowChangeRequest(false)}
                   className="flex-1 px-4 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  Cancel
+                  Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
                   className="flex-1 px-4 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
-                  {loading ? "Sending..." : "Send Request"}
+                  {loading ? "Enviando..." : "Enviar Solicitação"}{" "}
                 </button>
               </div>
             </form>
@@ -369,7 +400,7 @@ export const ClientPreview = () => {
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-gray-900">
-                    Post Details
+                    Detalhes do Post
                   </h3>
                   <button
                     onClick={() => setSelectedPost(null)}

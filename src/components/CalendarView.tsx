@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react';
-import { Post } from '../lib/supabase';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState } from "react";
+import { Post } from "../lib/supabase";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type CalendarViewProps = {
   posts: Post[];
   onPostClick: (post: Post) => void;
 };
 
-type ViewMode = 'weekly' | 'monthly';
+type ViewMode = "weekly" | "monthly";
 
 export const CalendarView = ({ posts, onPostClick }: CalendarViewProps) => {
-  const [viewMode, setViewMode] = useState<ViewMode>('weekly');
+  const [viewMode, setViewMode] = useState<ViewMode>("weekly");
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const getWeekDates = (date: Date) => {
@@ -55,24 +55,62 @@ export const CalendarView = ({ posts, onPostClick }: CalendarViewProps) => {
     });
   };
 
-  const navigateWeek = (direction: 'prev' | 'next') => {
+  const navigateWeek = (direction: "prev" | "next") => {
     const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
+    newDate.setDate(newDate.getDate() + (direction === "next" ? 7 : -7));
     setCurrentDate(newDate);
   };
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
+  const navigateMonth = (direction: "prev" | "next") => {
     const newDate = new Date(currentDate);
-    newDate.setMonth(newDate.getMonth() + (direction === 'next' ? 1 : -1));
+    newDate.setMonth(newDate.getMonth() + (direction === "next" ? 1 : -1));
     setCurrentDate(newDate);
   };
 
-  const dates = viewMode === 'weekly' ? getWeekDates(currentDate) : getMonthDates(currentDate);
+  const dates =
+    viewMode === "weekly"
+      ? getWeekDates(currentDate)
+      : getMonthDates(currentDate);
 
   const formatMonthYear = (date: Date) => {
-    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
   };
 
+  const handleMonthChange = (month: number) => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(month);
+    setCurrentDate(newDate);
+  };
+
+  const handleYearChange = (year: number) => {
+    const newDate = new Date(currentDate);
+    newDate.setFullYear(year);
+    setCurrentDate(newDate);
+  };
+
+  const getYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear - 5; i <= currentYear + 5; i++) {
+      years.push(i);
+    }
+    return years;
+  };
+
+  const monthNames = [
+    "Janeiro",
+    "Fevereiro",
+    "Março",
+    "Abril",
+    "Maio",
+    "Junho",
+    "Julho",
+    "Agosto",
+    "Setembro",
+    "Outubro",
+    "Novembro",
+    "Dezembro",
+  ];
   const isToday = (date: Date) => {
     const today = new Date();
     return (
@@ -91,50 +129,82 @@ export const CalendarView = ({ posts, onPostClick }: CalendarViewProps) => {
       <div className="flex items-center justify-between">
         <div className="flex gap-2">
           <button
-            onClick={() => setViewMode('weekly')}
+            onClick={() => setViewMode("weekly")}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              viewMode === 'weekly'
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              viewMode === "weekly"
+                ? "bg-gray-900 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            Week
+            Semana
           </button>
           <button
-            onClick={() => setViewMode('monthly')}
+            onClick={() => setViewMode("monthly")}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              viewMode === 'monthly'
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              viewMode === "monthly"
+                ? "bg-gray-900 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            Month
+            Mês
           </button>
         </div>
 
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => viewMode === 'weekly' ? navigateWeek('prev') : navigateMonth('prev')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <span className="font-semibold text-gray-900 min-w-[180px] text-center">
-            {formatMonthYear(currentDate)}
-          </span>
-          <button
-            onClick={() => viewMode === 'weekly' ? navigateWeek('next') : navigateMonth('next')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
+          {viewMode === "weekly" ? (
+            <>
+              <button
+                onClick={() => navigateWeek("prev")}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <span className="font-semibold text-gray-900 min-w-[180px] text-center capitalize">
+                {formatMonthYear(currentDate)}
+              </span>
+              <button
+                onClick={() => navigateWeek("next")}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-2">
+              <select
+                value={currentDate.getMonth()}
+                onChange={(e) => handleMonthChange(Number(e.target.value))}
+                className="p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900"
+              >
+                {monthNames.map((month, index) => (
+                  <option key={month} value={index}>
+                    {month}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={currentDate.getFullYear()}
+                onChange={(e) => handleYearChange(Number(e.target.value))}
+                className="p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900"
+              >
+                {getYearOptions().map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
-      {viewMode === 'weekly' ? (
+      {viewMode === "weekly" ? (
         <div className="grid grid-cols-7 gap-2">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <div key={day} className="text-center text-sm font-medium text-gray-600 py-2">
+          {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
+            <div
+              key={day}
+              className="text-center text-sm font-medium text-gray-600 py-2"
+            >
               {day}
             </div>
           ))}
@@ -145,13 +215,15 @@ export const CalendarView = ({ posts, onPostClick }: CalendarViewProps) => {
                 key={date.toISOString()}
                 className={`min-h-[120px] p-2 rounded-lg border ${
                   isToday(date)
-                    ? 'border-gray-900 bg-gray-50'
-                    : 'border-gray-200 bg-white'
+                    ? "border-gray-900 bg-gray-50"
+                    : "border-gray-200 bg-white"
                 }`}
               >
-                <div className={`text-sm font-medium mb-2 ${
-                  isToday(date) ? 'text-gray-900' : 'text-gray-600'
-                }`}>
+                <div
+                  className={`text-sm font-medium mb-2 ${
+                    isToday(date) ? "text-gray-900" : "text-gray-600"
+                  }`}
+                >
                   {date.getDate()}
                 </div>
                 <div className="space-y-1">
@@ -168,7 +240,9 @@ export const CalendarView = ({ posts, onPostClick }: CalendarViewProps) => {
                           className="w-full h-12 object-cover rounded mb-1"
                         />
                       )}
-                      <p className="truncate font-medium">{post.client?.name}</p>
+                      <p className="truncate font-medium">
+                        {post.client?.name}
+                      </p>
                     </button>
                   ))}
                 </div>
@@ -178,8 +252,11 @@ export const CalendarView = ({ posts, onPostClick }: CalendarViewProps) => {
         </div>
       ) : (
         <div className="grid grid-cols-7 gap-2">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <div key={day} className="text-center text-sm font-medium text-gray-600 py-2">
+          {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
+            <div
+              key={day}
+              className="text-center text-sm font-medium text-gray-600 py-2"
+            >
               {day}
             </div>
           ))}
@@ -190,19 +267,21 @@ export const CalendarView = ({ posts, onPostClick }: CalendarViewProps) => {
                 key={date.toISOString()}
                 className={`min-h-[100px] p-2 rounded-lg border ${
                   !isCurrentMonth(date)
-                    ? 'bg-gray-50 border-gray-100'
+                    ? "bg-gray-50 border-gray-100"
                     : isToday(date)
-                    ? 'border-gray-900 bg-gray-50'
-                    : 'border-gray-200 bg-white'
+                    ? "border-gray-900 bg-gray-50"
+                    : "border-gray-200 bg-white"
                 }`}
               >
-                <div className={`text-sm font-medium mb-1 ${
-                  !isCurrentMonth(date)
-                    ? 'text-gray-400'
-                    : isToday(date)
-                    ? 'text-gray-900'
-                    : 'text-gray-600'
-                }`}>
+                <div
+                  className={`text-sm font-medium mb-1 ${
+                    !isCurrentMonth(date)
+                      ? "text-gray-400"
+                      : isToday(date)
+                      ? "text-gray-900"
+                      : "text-gray-600"
+                  }`}
+                >
                   {date.getDate()}
                 </div>
                 {dayPosts.length > 0 && (
@@ -216,7 +295,9 @@ export const CalendarView = ({ posts, onPostClick }: CalendarViewProps) => {
                       />
                     ))}
                     {dayPosts.length > 3 && (
-                      <span className="text-xs text-gray-500">+{dayPosts.length - 3}</span>
+                      <span className="text-xs text-gray-500">
+                        +{dayPosts.length - 3}
+                      </span>
                     )}
                   </div>
                 )}
