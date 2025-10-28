@@ -18,6 +18,7 @@ import {
   Rows,
   PanelRight,
   Video,
+  CheckSquare, // Adicionado
 } from "lucide-react";
 import { PostImage, Post } from "../lib/supabase";
 import { isMediaVideo } from "../lib/utils";
@@ -28,6 +29,7 @@ export type ImageData = {
   cropFormat: CropFormat;
   tempId: string;
   fileName: string;
+  scheduledDate: string; // Adicionado para o modo bulk
 };
 
 export const PostCreator = ({
@@ -67,6 +69,7 @@ export const PostCreator = ({
   const [scheduledDate, setScheduledDate] = useState(getDefaultScheduledDate());
   const [caption, setCaption] = useState("");
   const [images, setImages] = useState<ImageData[]>([]);
+  const [isBulkMode, setIsBulkMode] = useState(false); // Adicionado
   const [submitLoading, setSubmitLoading] = useState(false);
   const [compressLoading, setCompressLoading] = useState(false);
   const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
@@ -155,8 +158,22 @@ export const PostCreator = ({
 
   // Envia mudanças para o preview externo
   useEffect(() => {
-    onDraftChange({ images, caption, postType });
-  }, [images, caption, postType, onDraftChange]);
+    // Em modo bulk, o preview não faz sentido. Envia dados vazios.
+    if (isBulkMode) {
+      onDraftChange({ images: [], caption: "", postType });
+    } else {
+      onDraftChange({ images, caption, postType });
+    }
+  }, [images, caption, postType, isBulkMode, onDraftChange]);
+
+  // Adicionado: Handler para mudar a data de uma imagem específica no modo bulk
+  const handleImageDateChange = (tempId: string, newDate: string) => {
+    setImages((prev) =>
+      prev.map((img) =>
+        img.tempId === tempId ? { ...img, scheduledDate: newDate } : img
+      )
+    );
+  };
 
   const compressImage = (file: File): Promise<File> => {
     return new Promise((resolve, reject) => {
@@ -249,6 +266,7 @@ export const PostCreator = ({
           cropFormat: defaultFormat,
           tempId: Math.random().toString(36),
           fileName: processedFile.name,
+          scheduledDate: getDefaultScheduledDate(), // Adicionado
         });
       } catch (err) {
         console.error("Failed to process file:", err);
@@ -261,24 +279,25 @@ export const PostCreator = ({
     setImages((prev) => {
       let updatedImages = [...prev, ...newImages];
 
-      // Se o tipo NÃO for carrossel, limita a 1
-      if (postType !== "carousel") {
+      // Se o tipo NÃO for carrossel E NÃO for bulk, limita a 1
+      if (postType !== "carousel" && !isBulkMode) {
         updatedImages = updatedImages.slice(-1);
       }
 
-      // Se o tipo for carrossel, limita a 10
-      if (postType === "carousel") {
+      // Se o tipo for carrossel E NÃO for bulk, limita a 10
+      if (postType === "carousel" && !isBulkMode) {
         updatedImages = updatedImages.slice(0, 10);
       }
 
-      // Se houver mais de 1 imagem, força o tipo carrossel
-      if (updatedImages.length > 1) {
+      // Se houver mais de 1 imagem E NÃO for bulk, força o tipo carrossel
+      if (updatedImages.length > 1 && !isBulkMode) {
         setPostType("carousel");
       }
 
-      // Se a (nova) única mídia for um vídeo, seta o tipo para Reels
+      // Se a (nova) única mídia for um vídeo E NÃO for bulk, seta o tipo para Reels
       if (
         updatedImages.length === 1 &&
+        !isBulkMode &&
         updatedImages[0].file.type.startsWith("video/")
       ) {
         setPostType("reels");
@@ -362,70 +381,119 @@ export const PostCreator = ({
     if (!selectedClientId || images.length === 0) return;
 
     setSubmitLoading(true);
-    setUploadProgress(0); // Inicia o progresso
+    setUploadProgress(0);
 
     try {
-      const { data: post, error: postError } = await supabase
-        .from("posts")
-        .insert([
-          {
+      // --- LÓGICA BULK ---
+      if (isBulkMode) {
+        const totalImages = images.length;
+        const postCreations: Omit<Post, "id" | "created_at" | "updated_at">[] =
+          [];
+
+        // 1. Prepara todos os posts
+        for (let i = 0; i < totalImages; i++) {
+          const image = images[i];
+          postCreations.push({
             client_id: selectedClientId,
-            post_type: postType,
-            scheduled_date: `${scheduledDate}:00Z`, // Adiciona segundos e Z para tratar como UTC
-            caption,
+            post_type: postType, // 'story' or 'reels'
+            scheduled_date: `${image.scheduledDate}:00Z`,
+            caption: "", // Sem legenda no modo bulk
             status: "pending",
-          },
-        ])
-        .select()
-        .single();
+          });
+        }
 
-      if (postError) throw postError;
+        // 2. Insere todos os posts no DB
+        const { data: newPosts, error: postError } = await supabase
+          .from("posts")
+          .insert(postCreations)
+          .select("id"); // Retorna os IDs criados
 
-      // 5% pela criação do post
-      setUploadProgress(5);
+        if (postError) throw postError;
+        if (!newPosts || newPosts.length !== totalImages) {
+          throw new Error("Falha ao criar entradas de post (contagem).");
+        }
 
-      for (let i = 0; i < images.length; i++) {
-        const image = images[i];
-        const { url, publicId } = await uploadToCloudinary(image.file);
+        setUploadProgress(5); // 5% pela criação dos posts
 
-        await supabase.from("post_images").insert([
-          {
-            post_id: post.id,
-            image_url: url,
-            image_public_id: publicId,
-            crop_format: image.cropFormat,
-            position: i,
-          },
-        ]);
+        // 3. Faz upload e linca as mídias
+        const progressChunk = 95 / totalImages;
+        for (let i = 0; i < totalImages; i++) {
+          const image = images[i];
+          const newPostId = newPosts[i].id;
 
-        // Atualiza o progresso (95% restantes divididos pelo N de imagens)
-        const progressChunk = 95 / images.length;
-        setUploadProgress((prev) => (prev || 5) + progressChunk);
+          const { url, publicId } = await uploadToCloudinary(image.file);
+
+          await supabase.from("post_images").insert([
+            {
+              post_id: newPostId,
+              image_url: url,
+              image_public_id: publicId,
+              crop_format: image.cropFormat, // Usa o formato (ex: 9:16)
+              position: 0, // Posição 0 (post único)
+            },
+          ]);
+
+          setUploadProgress((prev) => (prev || 5) + progressChunk);
+        }
+      }
+      // --- LÓGICA ORIGINAL (SINGLE/CAROUSEL) ---
+      else {
+        const { data: post, error: postError } = await supabase
+          .from("posts")
+          .insert([
+            {
+              client_id: selectedClientId,
+              post_type: postType,
+              scheduled_date: `${scheduledDate}:00Z`,
+              caption,
+              status: "pending",
+            },
+          ])
+          .select()
+          .single();
+
+        if (postError) throw postError;
+        setUploadProgress(5);
+
+        for (let i = 0; i < images.length; i++) {
+          const image = images[i];
+          const { url, publicId } = await uploadToCloudinary(image.file);
+
+          await supabase.from("post_images").insert([
+            {
+              post_id: post.id,
+              image_url: url,
+              image_public_id: publicId,
+              crop_format: image.cropFormat,
+              position: i,
+            },
+          ]);
+
+          const progressChunk = 95 / images.length;
+          setUploadProgress((prev) => (prev || 5) + progressChunk);
+        }
       }
 
-      // Pequeno delay para o usuário ver os 100%
+      // --- SUCESSO E RESET (Comum a ambos os modos) ---
       await new Promise((resolve) => setTimeout(resolve, 300));
-
       setSelectedClientId("");
       setPostType("feed");
       setScheduledDate(getDefaultScheduledDate());
       setCaption("");
       setImages([]);
+      setIsBulkMode(false); // Reseta o modo bulk
       onSuccess();
-
-      // Reseta o estado
-      setSubmitLoading(false);
-      setUploadProgress(null);
     } catch (error) {
-      console.error("Error creating post:", error);
-      alert("Failed to create post. Please try again.");
+      console.error("Error creating post(s):", error);
+      alert("Failed to create post(s). Please try again.");
+    } finally {
       setSubmitLoading(false);
       setUploadProgress(null);
     }
   };
 
-  const maxImages = postType === "carousel" ? 10 : 1;
-  const canAddMore = images.length < maxImages;
+  const maxImages = postType === "carousel" && !isBulkMode ? 10 : 1;
+  const canAddMore = isBulkMode ? true : images.length < maxImages;
 
   const selectedClient = clients.find((c) => c.id === selectedClientId);
 
@@ -547,6 +615,10 @@ export const PostCreator = ({
                   type="button"
                   onClick={() => {
                     setPostType(type);
+                    // Se mudar o tipo, desativa o modo bulk
+                    setIsBulkMode(false);
+                    setImages([]); // Limpa imagens ao trocar o tipo
+
                     if (type === "story") {
                       // Força 9:16 para story
                       setImages((prevImages) =>
@@ -556,18 +628,26 @@ export const PostCreator = ({
                         }))
                       );
                     }
-                    if (type !== "carousel" && images.length > 1) {
-                      // Se não for carrossel, limita a 1 imagem (mantém a primeira)
+                    if (
+                      type !== "carousel" &&
+                      images.length > 1 &&
+                      !isBulkMode
+                    ) {
+                      // Se não for carrossel E NÃO for bulk, limita a 1 imagem
                       setImages((prevImages) => [prevImages[0]]);
                     }
-                    if (type === "carousel" && images.length === 1) {
-                      // Se for carrossel e só tiver 1 vídeo, não faz sentido
+                    if (
+                      type === "carousel" &&
+                      images.length === 1 &&
+                      !isBulkMode
+                    ) {
+                      // Se for carrossel, NÃO bulk e só tiver 1 vídeo, não faz sentido
                       if (images[0].file.type.startsWith("video/")) {
                         setImages([]);
                       }
                     }
-                    if (type === "reels" || type === "story") {
-                      // Se for reels ou story, só pode ter 1 item
+                    if ((type === "reels" || type === "story") && !isBulkMode) {
+                      // Se for reels ou story (e NÃO bulk), só pode ter 1 item
                       setImages((prevImages) => prevImages.slice(0, 1));
                     }
                   }}
@@ -584,78 +664,109 @@ export const PostCreator = ({
           </div>
         </div>
 
-        <div>
-          <label
-            htmlFor="scheduledDateInput"
-            className="block text-sm font-medium text-gray-700 mb-2 cursor-pointer"
-          >
-            <Calendar className="w-4 h-4 inline mr-1" />
-            Data Agendada
-          </label>
-          <input
-            id="scheduledDateInput"
-            type="datetime-local"
-            value={scheduledDate}
-            onChange={(e) => setScheduledDate(e.target.value)}
-            required
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none text-gray-900"
-          />
-          {latestPostDate && (
-            <div className="mt-2 text-sm text-gray-600">
-              Último post agendado:{" "}
-              <span className="font-medium text-gray-900">
-                {new Date(latestPostDate).toLocaleDateString("pt-BR", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  timeZone: "UTC",
-                })}
+        {/* Adicionado: Checkbox Modo Bulk */}
+        {(postType === "story" || postType === "reels") && (
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isBulkMode}
+                onChange={(e) => {
+                  setIsBulkMode(e.target.checked);
+                  setImages([]); // Limpa imagens ao trocar de modo
+                }}
+                className="w-4 h-4 rounded text-gray-900 focus:ring-gray-900"
+              />
+              <span className="text-sm font-medium text-gray-700">
+                Agendar em Lote (Bulk)
               </span>
-            </div>
-          )}
-          {conflictingPosts.length > 0 && (
-            <div className="mt-2 flex items-start gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded-lg">
-              {" "}
-              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <div className="text-sm">
-                <span className="font-medium">
-                  Este cliente já tem {conflictingPosts.length} post(s) neste
-                  dia:
-                </span>
-                <ul className="list-disc list-inside mt-1">
-                  {conflictingPosts.map((post) => (
-                    <li key={post.id}>
-                      {new Date(post.scheduled_date).toLocaleTimeString(
-                        "pt-BR",
-                        {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          timeZone: "UTC",
-                        }
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-        </div>
-        {postType !== "story" && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {" "}
-              Legenda
             </label>
-            <textarea
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              rows={4}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none resize-none"
-              placeholder="Escreva sua legenda aqui..."
-            />
+            {isBulkMode && (
+              <p className="text-xs text-gray-500 mt-2 ml-6">
+                Envie várias mídias e defina a data/hora para cada uma
+                individualmente.
+              </p>
+            )}
           </div>
+        )}
+
+        {/* Oculta Data principal e Legenda no modo bulk */}
+        {!isBulkMode && (
+          <>
+            <div>
+              <label
+                htmlFor="scheduledDateInput"
+                className="block text-sm font-medium text-gray-700 mb-2 cursor-pointer"
+              >
+                <Calendar className="w-4 h-4 inline mr-1" />
+                Data Agendada
+              </label>
+              <input
+                id="scheduledDateInput"
+                type="datetime-local"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                required
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none text-gray-900"
+              />
+              {latestPostDate && (
+                <div className="mt-2 text-sm text-gray-600">
+                  Último post agendado:{" "}
+                  <span className="font-medium text-gray-900">
+                    {new Date(latestPostDate).toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      timeZone: "UTC",
+                    })}
+                  </span>
+                </div>
+              )}
+              {conflictingPosts.length > 0 && (
+                <div className="mt-2 flex items-start gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded-lg">
+                  {" "}
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <span className="font-medium">
+                      Este cliente já tem {conflictingPosts.length} post(s)
+                      neste dia:
+                    </span>
+                    <ul className="list-disc list-inside mt-1">
+                      {conflictingPosts.map((post) => (
+                        <li key={post.id}>
+                          {new Date(post.scheduled_date).toLocaleTimeString(
+                            "pt-BR",
+                            {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              timeZone: "UTC",
+                            }
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+            {postType !== "story" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {" "}
+                  Legenda
+                </label>
+                <textarea
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  rows={4}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none resize-none"
+                  placeholder="Escreva sua legenda aqui..."
+                />
+              </div>
+            )}
+          </>
         )}
 
         <div>
@@ -663,10 +774,14 @@ export const PostCreator = ({
             <label className="block text-sm font-medium text-gray-700">
               <ImageIcon className="w-4 h-4 inline mr-1" />
               Mídias{" "}
-              {postType === "carousel" && `(${images.length}/${maxImages})`}
+              {postType === "carousel" &&
+                !isBulkMode &&
+                `(${images.length}/${maxImages})`}
+              {isBulkMode && `(${images.length})`}
             </label>
 
-            {postType === "carousel" && images.length > 1 && (
+            {/* Oculta "Aplicar formato" em modo bulk */}
+            {postType === "carousel" && images.length > 1 && !isBulkMode && (
               <div className="relative">
                 <button
                   type="button"
@@ -702,9 +817,10 @@ export const PostCreator = ({
                   draggable
                   onDragStart={() => handleDragStart(index)}
                   onDragOver={(e) => handleDragOver(e, index)}
-                  className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg cursor-move hover:bg-gray-100 transition-colors"
+                  className="flex items-start gap-3 bg-gray-50 p-3 rounded-lg cursor-move hover:bg-gray-100 transition-colors"
                 >
-                  {postType === "carousel" && (
+                  {/* Oculta Grip no modo bulk */}
+                  {postType === "carousel" && !isBulkMode && (
                     <GripVertical className="w-5 h-5 text-gray-400 flex-shrink-0" />
                   )}
                   {isVideo ? (
@@ -725,7 +841,29 @@ export const PostCreator = ({
                     >
                       {image.fileName}
                     </p>
-                    <p className="text-xs text-gray-500">{image.cropFormat}</p>
+                    {/* Oculta formato em modo bulk */}
+                    {!isBulkMode && (
+                      <p className="text-xs text-gray-500">
+                        {image.cropFormat}
+                      </p>
+                    )}
+
+                    {/* Adicionado: Input de data/hora no modo bulk */}
+                    {isBulkMode && (
+                      <input
+                        type="datetime-local"
+                        value={image.scheduledDate}
+                        onChange={(e) =>
+                          handleImageDateChange(image.tempId, e.target.value)
+                        }
+                        required
+                        className="w-full px-2 py-1.5 rounded-lg border border-gray-300 text-sm shadow-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation(); // Impede que o drag comece ao clicar no input
+                        }}
+                      />
+                    )}
                   </div>
                   <button
                     type="button"
@@ -735,7 +873,7 @@ export const PostCreator = ({
                         preview: image.preview,
                       })
                     }
-                    disabled={isVideo}
+                    disabled={isVideo || isBulkMode} // Desabilita Crop em modo bulk
                     className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Crop
@@ -810,9 +948,14 @@ export const PostCreator = ({
                 images.length === 0 ||
                 !selectedClientId
               }
-              className="flex-1 bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {submitLoading ? "Criando Post..." : "Criar Post"}
+              {isBulkMode && <CheckSquare className="w-4 h-4" />}
+              {submitLoading
+                ? "Criando..."
+                : isBulkMode
+                ? `Criar ${images.length} Post(s)`
+                : "Criar Post"}
             </button>
           </div>
         )}
