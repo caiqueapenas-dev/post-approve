@@ -56,7 +56,7 @@ export const PostPreviewer = ({
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col items-center justify-start h-[calc(100vh-140px)]">
-      <h3 className="text-xl font-bold text-gray-900 mb-4">Preview</h3>
+      <h3 className="text-xl font-bold text-gray-900 mb-4">Pré-visualização</h3>
 
       <div className="flex flex-col items-center space-y-4 w-full">
         {images.length > 0 ? (

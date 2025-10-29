@@ -24,6 +24,33 @@ export const PostList = ({ refresh }: { refresh: number }) => {
     | "published"
   >("all");
 
+  const translateStatus = (
+    status:
+      | "all"
+      | "pending"
+      | "change_requested"
+      | "approved"
+      | "agendado"
+      | "published"
+  ) => {
+    switch (status) {
+      case "all":
+        return "Todos";
+      case "pending":
+        return "Pendente";
+      case "change_requested":
+        return "Alteração Solicitada";
+      case "approved":
+        return "Aprovado";
+      case "agendado":
+        return "Agendado";
+      case "published":
+        return "Publicado";
+      default:
+        return status;
+    }
+  };
+
   useEffect(() => {
     const fetchClients = async () => {
       const { data } = await supabase.from("clients").select("*").order("name");
@@ -57,12 +84,27 @@ export const PostList = ({ refresh }: { refresh: number }) => {
     if (data) setPosts(data as any);
   };
 
+  const translatePostType = (type: string) => {
+    switch (type) {
+      case "feed":
+        return "Feed";
+      case "carousel":
+        return "Carrossel";
+      case "story":
+        return "Story";
+      case "reels":
+        return "Reels";
+      default:
+        return type;
+    }
+  };
+
   useEffect(() => {
     fetchPosts();
   }, [filter, selectedClientId]);
 
   const deletePost = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this post?")) return;
+    if (!confirm("Tem certeza que deseja excluir este post?")) return;
     await supabase.from("posts").delete().eq("id", id);
     fetchPosts();
   };
@@ -144,13 +186,13 @@ export const PostList = ({ refresh }: { refresh: number }) => {
             <button
               key={status}
               onClick={() => setFilter(status)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 filter === status
                   ? "bg-gray-900 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
-              {status.replace("_", " ")}
+              {translateStatus(status)}
             </button>
           ))}
         </div>
@@ -184,8 +226,8 @@ export const PostList = ({ refresh }: { refresh: number }) => {
                       </h3>
                       <div className="flex items-center gap-2 mt-1">
                         {getStatusIcon(post.status)}
-                        <span className="text-sm text-gray-600 capitalize">
-                          {post.status.replace("_", " ")}
+                        <span className="text-sm text-gray-600">
+                          {translateStatus(post.status as any)}
                         </span>
                       </div>
                     </div>
@@ -211,7 +253,7 @@ export const PostList = ({ refresh }: { refresh: number }) => {
                         {dateInfo.date} - {dateInfo.day}
                       </span>
                     </div>
-                    <span className="capitalize">{post.post_type}</span>
+                    <span>{translatePostType(post.post_type)}</span>
                     {post.images && post.images.length > 1 && (
                       <span>{post.images.length} images</span>
                     )}
@@ -229,7 +271,7 @@ export const PostList = ({ refresh }: { refresh: number }) => {
                         <MessageSquare className="w-4 h-4 text-orange-600 mt-0.5" />
                         <div className="flex-1">
                           <p className="text-sm font-medium text-orange-900">
-                            Change Requested
+                            Alteração Solicitada
                           </p>
                           <p className="text-sm text-orange-700 mt-1">
                             {
@@ -250,7 +292,7 @@ export const PostList = ({ refresh }: { refresh: number }) => {
 
         {posts.length === 0 && (
           <div className="text-center py-12 text-gray-500">
-            No posts found for this filter.
+            Nenhum post encontrado para este filtro.
           </div>
         )}
       </div>

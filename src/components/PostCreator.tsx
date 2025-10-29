@@ -48,6 +48,21 @@ type PostCreatorProps = {
   }) => void;
 };
 
+const translatePostType = (type: PostType) => {
+  switch (type) {
+    case "feed":
+      return "Feed";
+    case "carousel":
+      return "Carrossel";
+    case "story":
+      return "Story";
+    case "reels":
+      return "Reels";
+    default:
+      return type;
+  }
+};
+
 export const PostCreator = ({
   onSuccess,
   showCalendar,
@@ -219,7 +234,7 @@ export const PostCreator = ({
       } catch (err) {
         console.error("Failed to process file:", err);
         alert(
-          `Failed to process ${file.name}. It might be corrupted or not a valid media file.`
+          `Falha ao processar ${file.name}. Pode estar corrompido ou não ser um arquivo de mídia válido.`
         );
       }
     }
@@ -471,7 +486,7 @@ export const PostCreator = ({
       onSuccess(); // onSuccess definido
     } catch (error) {
       console.error("Error creating post(s):", error);
-      alert("Failed to create post(s). Please try again.");
+      alert("Falha ao criar post(s). Por favor, tente novamente.");
     } finally {
       setSubmitLoading(false); // setSubmitLoading definido
       setUploadProgress(null); // setUploadProgress definido
@@ -635,7 +650,7 @@ export const PostCreator = ({
                     <span className="text-gray-900">{selectedClient.name}</span>
                   </>
                 ) : (
-                  <span className="text-gray-500">Select a client</span>
+                  <span className="text-gray-500">Selecione um cliente</span>
                 )}
               </span>
               <ChevronsUpDown className="w-4 h-4 text-gray-400" />
@@ -715,13 +730,13 @@ export const PostCreator = ({
                       );
                     }
                   }}
-                  className={`px-4 py-3 rounded-lg font-medium capitalize transition-colors ${
+                  className={`px-4 py-3 rounded-lg font-medium transition-colors ${
                     postType === type // postType definido
                       ? "bg-gray-900 text-white"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
-                  {type}
+                  {translatePostType(type)}
                 </button>
               )
             )}
@@ -1000,7 +1015,7 @@ export const PostCreator = ({
                         }
                         className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                       >
-                        Crop
+                        Recortar
                       </button>
                     )}
                     {/* Botão Remover */}

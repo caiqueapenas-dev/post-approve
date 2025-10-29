@@ -218,6 +218,21 @@ export const ClientPreview = () => {
     };
   };
 
+  const translatePostType = (type: string) => {
+    switch (type) {
+      case "feed":
+        return "Feed";
+      case "carousel":
+        return "Carrossel";
+      case "story":
+        return "Story";
+      case "reels":
+        return "Reels";
+      default:
+        return type;
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const statusMap = {
       pending: {
@@ -390,8 +405,8 @@ export const ClientPreview = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           {getStatusBadge(post.status)}
-                          <span className="text-sm text-gray-600 capitalize">
-                            {post.post_type}
+                          <span className="text-sm text-gray-600">
+                            {translatePostType(post.post_type)}
                           </span>
                         </div>
                       </div>
@@ -505,8 +520,8 @@ export const ClientPreview = () => {
                             </div>
                             <div className="flex items-center gap-2">
                               {getStatusBadge(post.status)}
-                              <span className="text-sm text-gray-600 capitalize">
-                                {post.post_type}
+                              <span className="text-sm text-gray-600">
+                                {translatePostType(post.post_type)}
                               </span>
                             </div>
                             {post.caption && (
@@ -705,8 +720,8 @@ export const ClientPreview = () => {
                   <div className="p-4 space-y-3">
                     <div className="flex items-center gap-2">
                       {getStatusBadge(post.status)}
-                      <span className="text-sm text-gray-600 capitalize">
-                        {post.post_type}
+                      <span className="text-sm text-gray-600">
+                        {translatePostType(post.post_type)}
                       </span>
                     </div>
                     {post.caption && (

@@ -106,7 +106,7 @@ export const ImageCropper = ({
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-auto">
         <div className="p-6 space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-gray-900">Crop Image</h3>
+            <h3 className="text-xl font-bold text-gray-900">Recortar Imagem</h3>
             <button
               onClick={onCancel}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -168,13 +168,13 @@ export const ImageCropper = ({
               onClick={onCancel}
               className="flex-1 px-4 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              Cancel
+              Cancelar
             </button>
             <button
               onClick={handleCrop}
               className="flex-1 px-4 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors"
             >
-              Apply Crop
+              Aplicar Recorte
             </button>
           </div>
         </div>

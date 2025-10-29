@@ -21,6 +21,23 @@ export const AdminCalendarView = ({
   const [selectedPostType, setSelectedPostType] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
+  const translateStatus = (status: PostStatus) => {
+    switch (status) {
+      case "pending":
+        return "Pendente";
+      case "change_requested":
+        return "Alteração Solicitada";
+      case "approved":
+        return "Aprovado";
+      case "agendado":
+        return "Agendado";
+      case "published":
+        return "Publicado";
+      default:
+        return status;
+    }
+  };
+
   useEffect(() => {
     fetchPosts();
     fetchClients();
@@ -261,11 +278,11 @@ export const AdminCalendarView = ({
                         </span>
                       </div>
                       <p
-                        className={`text-sm capitalize mt-1 font-medium ${getStatusColorClass(
+                        className={`text-sm mt-1 font-medium ${getStatusColorClass(
                           post.status
                         )}`}
                       >
-                        {post.status.replace("_", " ")} -{" "}
+                        {translateStatus(post.status)} -{" "}
                         <span className="font-normal text-gray-500">
                           {new Date(post.scheduled_date).toLocaleTimeString(
                             "pt-BR",

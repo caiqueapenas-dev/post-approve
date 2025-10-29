@@ -17,7 +17,7 @@ export const AdminLogin = () => {
     try {
       await signIn(email, password);
     } catch (err) {
-      setError("Invalid email or password");
+      setError("E-mail ou senha inválidos");
     } finally {
       setLoading(false);
     }
@@ -36,7 +36,9 @@ export const AdminLogin = () => {
           <h1 className="text-2xl font-bold text-center text-gray-900 mb-2">
             Aprovador de post
           </h1>
-          <p className="text-center text-gray-600 mb-8">Admin Dashboard</p>
+          <p className="text-center text-gray-600 mb-8">
+            Painel Administrativo
+          </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -44,7 +46,7 @@ export const AdminLogin = () => {
                 htmlFor="email"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Email
+                E-mail
               </label>
               <input
                 id="email"
@@ -62,7 +64,7 @@ export const AdminLogin = () => {
                 htmlFor="password"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Password
+                Senha
               </label>
               <input
                 id="password"
@@ -86,7 +88,7 @@ export const AdminLogin = () => {
               disabled={loading}
               className="w-full bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? "Entrando..." : "Entrar"}
             </button>
           </form>
         </div>

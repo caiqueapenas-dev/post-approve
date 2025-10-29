@@ -75,7 +75,9 @@ export const Router = ({ routes }: { routes: Route[] }) => {
     if (!found) {
       setParams({});
       setMatchedElement(
-        routes.find((r) => r.path === "*")?.element || <div>404 Not Found</div>
+        routes.find((r) => r.path === "*")?.element || (
+          <div>404 Página Não Encontrada</div>
+        )
       );
     }
   }, [currentPath, routes]); // Re-executa apenas quando o caminho (ou as rotas) mudam

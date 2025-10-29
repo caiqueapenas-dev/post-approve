@@ -154,14 +154,14 @@ export const ClientManager = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Users className="w-6 h-6 text-gray-700" />
-          <h2 className="text-2xl font-bold text-gray-900">Clients</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Clientes</h2>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
           className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
         >
           <Plus className="w-4 h-4" />
-          Add Client
+          Adicionar Cliente
         </button>
       </div>
 
@@ -212,7 +212,7 @@ export const ClientManager = () => {
                 }}
                 className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
               >
-                Copy Link
+                Copiar Link
               </button>
               <button
                 onClick={(e) => {
@@ -229,7 +229,7 @@ export const ClientManager = () => {
 
         {clients.length === 0 && (
           <div className="text-center py-12 text-gray-500">
-            No clients yet. Create your first client to get started.
+            Nenhum cliente ainda. Crie seu primeiro cliente para começar.
           </div>
         )}
       </div>
@@ -239,7 +239,7 @@ export const ClientManager = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full">
             <h3 className="text-xl font-bold text-gray-900 mb-4">
-              Add New Client
+              Adicionar Novo Cliente
             </h3>
             <form onSubmit={createClient} className="space-y-4">
               <div>
@@ -247,7 +247,7 @@ export const ClientManager = () => {
                   htmlFor="clientName"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Client Name (Internal)
+                  Nome do Cliente (Interno)
                 </label>
                 <input
                   id="clientName"
@@ -256,7 +256,7 @@ export const ClientManager = () => {
                   onChange={(e) => setNewClientName(e.target.value)}
                   required
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
-                  placeholder="Enter client name"
+                  placeholder="Digite o nome do cliente"
                   autoFocus
                 />
               </div>
@@ -267,14 +267,14 @@ export const ClientManager = () => {
                   onClick={() => setShowCreateModal(false)}
                   className="flex-1 px-4 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  Cancel
+                  Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
                   className="flex-1 px-4 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
-                  {loading ? "Creating..." : "Create"}
+                  {loading ? "Criando..." : "Criar"}
                 </button>
               </div>
             </form>
@@ -287,7 +287,7 @@ export const ClientManager = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full">
             <h3 className="text-xl font-bold text-gray-900 mb-4">
-              Edit Client
+              Editar Cliente
             </h3>
             <form onSubmit={updateClient} className="space-y-4">
               <div>
@@ -321,7 +321,7 @@ export const ClientManager = () => {
                     onClick={() => fileInputRef.current?.click()}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
                   >
-                    Change
+                    Alterar
                   </button>
                   {editAvatarPreview && (
                     <button
@@ -368,7 +368,7 @@ export const ClientManager = () => {
                   htmlFor="editDisplayName"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Display Name (Client View)
+                  Nome de Exibição (Visão do Cliente)
                 </label>
                 <input
                   id="editDisplayName"
@@ -376,7 +376,7 @@ export const ClientManager = () => {
                   value={editDisplayName}
                   onChange={(e) => setEditDisplayName(e.target.value)}
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
-                  placeholder="Client's preferred name"
+                  placeholder="Nome preferido do cliente"
                 />
               </div>
 
@@ -385,7 +385,7 @@ export const ClientManager = () => {
                   htmlFor="editName"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Internal Name
+                  Nome interno
                 </label>
                 <input
                   id="editName"
@@ -394,7 +394,7 @@ export const ClientManager = () => {
                   onChange={(e) => setEditName(e.target.value)}
                   required
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
-                  placeholder="Internal name (e.g. Company)"
+                  placeholder="Nome interno (ex: Empresa)"
                 />
               </div>
 
@@ -440,14 +440,14 @@ export const ClientManager = () => {
                   onClick={() => setShowEditModal(null)}
                   className="flex-1 px-4 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  Cancel
+                  Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
                   className="flex-1 px-4 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
-                  {loading ? "Saving..." : "Save Changes"}
+                  {loading ? "Salvando..." : "Salvar Alterações"}
                 </button>
               </div>
             </form>
