@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase, Post } from "../lib/supabase";
+import { supabase, Post, Client } from "../lib/supabase";
 import {
   Calendar,
   MessageSquare,
@@ -13,6 +13,8 @@ import { PostEditor } from "./PostEditor";
 export const PostList = ({ refresh }: { refresh: number }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>("all");
   const [filter, setFilter] = useState<
     | "all"
     | "pending"
@@ -23,6 +25,11 @@ export const PostList = ({ refresh }: { refresh: number }) => {
   >("all");
 
   useEffect(() => {
+    const fetchClients = async () => {
+      const { data } = await supabase.from("clients").select("*").order("name");
+      if (data) setClients(data);
+    };
+    fetchClients();
     fetchPosts();
   }, [refresh]);
 
@@ -39,6 +46,9 @@ export const PostList = ({ refresh }: { refresh: number }) => {
       )
       .order("scheduled_date", { ascending: true });
 
+    if (selectedClientId !== "all") {
+      query = query.eq("client_id", selectedClientId);
+    }
     if (filter !== "all") {
       query = query.eq("status", filter);
     }
@@ -49,7 +59,7 @@ export const PostList = ({ refresh }: { refresh: number }) => {
 
   useEffect(() => {
     fetchPosts();
-  }, [filter]);
+  }, [filter, selectedClientId]);
 
   const deletePost = async (id: string) => {
     if (!confirm("Are you sure you want to delete this post?")) return;
@@ -107,6 +117,19 @@ export const PostList = ({ refresh }: { refresh: number }) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Posts</h2>
+        <select
+          id="clientFilter"
+          value={selectedClientId}
+          onChange={(e) => setSelectedClientId(e.target.value)}
+          className="p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900 min-w-[150px]"
+        >
+          <option value="all">Todos os Clientes</option>
+          {clients.map((client) => (
+            <option key={client.id} value={client.id}>
+              {client.name}
+            </option>
+          ))}
+        </select>
         <div className="flex gap-2">
           {(
             [

@@ -19,6 +19,7 @@ export const AdminCalendarView = ({
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
   const [selectedPostType, setSelectedPostType] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
   useEffect(() => {
     fetchPosts();
@@ -85,11 +86,15 @@ export const AdminCalendarView = ({
           (post) => post.post_type === selectedPostType
         );
       }
+
+      if (selectedStatus !== "all") {
+        tempPosts = tempPosts.filter((post) => post.status === selectedStatus);
+      }
       setFilteredPosts(tempPosts);
     };
 
     applyFilters();
-  }, [posts, selectedClientId, selectedPostType]);
+  }, [posts, selectedClientId, selectedPostType, selectedStatus]);
   if (loading) {
     return (
       <div className="bg-white rounded-xl p-12 text-center shadow-sm">
@@ -146,6 +151,27 @@ export const AdminCalendarView = ({
               <option value="carousel">Carrossel</option>
               <option value="story">Story</option>
               <option value="reels">Reels</option>
+            </select>
+          </div>
+          <div className="flex-1 min-w-[150px]">
+            <label
+              htmlFor="statusFilter"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Status
+            </label>
+            <select
+              id="statusFilter"
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900"
+            >
+              <option value="all">Todos os Status</option>
+              <option value="pending">Pendente</option>
+              <option value="change_requested">Alteração Solicitada</option>
+              <option value="approved">Aprovado</option>
+              <option value="agendado">Agendado</option>
+              <option value="published">Publicado</option>
             </select>
           </div>
         </div>
