@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { Post, PostStatus } from "../lib/supabase";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  AlertCircle,
+  CheckCircle2,
+  Calendar,
+} from "lucide-react";
+import { getStatusBadgeClasses } from "../lib/utils";
 // Helper para determinar a cor do texto (preto ou branco) com base na cor de fundo
 const getTextColorForBackground = (hexColor: string | null): string => {
   if (!hexColor) return "text-white";
@@ -157,23 +165,6 @@ export const CalendarView = ({
     return date.getUTCMonth() === currentDate.getUTCMonth();
   };
 
-  const getStatusColorClass = (status: PostStatus) => {
-    switch (status) {
-      case "pending":
-        return "text-yellow-800";
-      case "change_requested":
-        return "text-orange-800";
-      case "approved":
-        return "text-green-800";
-      case "agendado":
-        return "text-cyan-800";
-      case "published":
-        return "text-blue-800";
-      default:
-        return "text-gray-500";
-    }
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4">
@@ -311,13 +302,34 @@ export const CalendarView = ({
                             }
                           )}
                         </p>
-                        <p
-                          className={`text-xs capitalize font-medium ${getStatusColorClass(
-                            post.status
-                          )}`}
-                        >
-                          {post.status.replace("_", " ")}
-                        </p>
+                        {(() => {
+                          const {
+                            badge,
+                            text,
+                            icon: iconColor,
+                          } = getStatusBadgeClasses(post.status);
+                          let IconComponent = Clock; // Default
+                          if (post.status === "change_requested")
+                            IconComponent = AlertCircle;
+                          if (
+                            post.status === "approved" ||
+                            post.status === "published"
+                          )
+                            IconComponent = CheckCircle2;
+                          if (post.status === "agendado")
+                            IconComponent = Calendar;
+
+                          return (
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${badge}`}
+                            >
+                              <IconComponent
+                                className={`w-3 h-3 ${iconColor}`}
+                              />
+                              <span>{text}</span>
+                            </span>
+                          );
+                        })()}
                       </div>
                     </button>
                   ))}
