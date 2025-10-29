@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Post, PostStatus } from "../lib/supabase";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type CalendarViewProps = {
   posts: Post[];
@@ -77,7 +78,25 @@ export const CalendarView = ({
     newDate.setUTCFullYear(year);
     setCurrentDate(newDate);
   };
+  const handlePrev = () => {
+    const newDate = new Date(currentDate);
+    if (viewMode === "weekly") {
+      newDate.setUTCDate(newDate.getUTCDate() - 7);
+    } else {
+      newDate.setUTCMonth(newDate.getUTCMonth() - 1);
+    }
+    setCurrentDate(newDate);
+  };
 
+  const handleNext = () => {
+    const newDate = new Date(currentDate);
+    if (viewMode === "weekly") {
+      newDate.setUTCDate(newDate.getUTCDate() + 7);
+    } else {
+      newDate.setUTCMonth(newDate.getUTCMonth() + 1);
+    }
+    setCurrentDate(newDate);
+  };
   const getYearOptions = () => {
     const currentYear = new Date().getUTCFullYear();
     const years = [];
@@ -165,6 +184,13 @@ export const CalendarView = ({
 
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePrev}
+              className="p-2 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-900"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
             <select
               value={currentDate.getUTCMonth()}
               onChange={(e) => handleMonthChange(Number(e.target.value))}
@@ -187,6 +213,13 @@ export const CalendarView = ({
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={handleNext}
+              className="p-2 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-900"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>
