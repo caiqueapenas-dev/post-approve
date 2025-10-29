@@ -100,6 +100,7 @@ export const PostCarousel = ({
             playsInline
             className="w-full h-full object-contain"
             preload="metadata"
+            poster={getVideoPoster(media.image_url)}
           >
             Seu navegador não suporta vídeos.
           </video>
@@ -150,6 +151,7 @@ export const PostCarousel = ({
                   playsInline
                   className="w-full h-full object-contain"
                   preload="metadata"
+                  poster={getVideoPoster(image.image_url)}
                 >
                   Seu navegador não suporta vídeos.
                 </video>
@@ -215,4 +217,8 @@ export const PostCarousel = ({
       )}
     </div>
   );
+};
+const getVideoPoster = (url: string) => {
+  if (!url) return undefined;
+  return url.replace(/\.(mp4|mov|webm|ogg)$/i, ".jpg");
 };
