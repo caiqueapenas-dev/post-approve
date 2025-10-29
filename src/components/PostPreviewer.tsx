@@ -81,7 +81,8 @@ export const PostPreviewer = ({
                   src={images[0].preview}
                   controls
                   playsInline
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
+                  preload="metadata"
                 >
                   Seu navegador não suporta vídeos.
                 </video>

@@ -98,7 +98,8 @@ export const PostCarousel = ({
             src={media.image_url}
             controls
             playsInline
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
+            preload="metadata"
           >
             Seu navegador não suporta vídeos.
           </video>
@@ -147,7 +148,8 @@ export const PostCarousel = ({
                   src={image.image_url}
                   controls
                   playsInline
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
+                  preload="metadata"
                 >
                   Seu navegador não suporta vídeos.
                 </video>
