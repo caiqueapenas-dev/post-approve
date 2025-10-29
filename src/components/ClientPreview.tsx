@@ -269,7 +269,10 @@ export const ClientPreview = () => {
     (post) => post.status === "pending" || post.status === "change_requested"
   );
   const approvedPosts = posts.filter(
-    (post) => post.status === "approved" || post.status === "published"
+    (post) =>
+      post.status === "approved" ||
+      post.status === "published" ||
+      post.status === "agendado"
   );
 
   if (!client) {
