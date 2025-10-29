@@ -4,7 +4,15 @@ import { ClientManager } from "./ClientManager";
 import { PostCreator, ImageData } from "./PostCreator";
 import { PostList } from "./PostList";
 import { AdminCalendarView } from "./AdminCalendarView";
-import { LogOut, Users, FileText, Calendar, Plus } from "lucide-react";
+import {
+  LogOut,
+  Users,
+  FileText,
+  Calendar,
+  Plus,
+  LayoutDashboard,
+} from "lucide-react";
+import { AdminAnalytics } from "./AdminAnalytics";
 import { PostPreviewer } from "./PostPreviewer";
 import { PostType } from "../lib/supabase";
 
@@ -17,8 +25,8 @@ type DraftData = {
 export const AdminDashboard = () => {
   const { signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<
-    "create" | "posts" | "clients" | "calendar"
-  >("create");
+    "dashboard" | "create" | "posts" | "clients" | "calendar"
+  >("dashboard");
   const [refreshPosts, setRefreshPosts] = useState(0);
   const [showSplitCalendar, setShowSplitCalendar] = useState(true);
   const [showPreviewColumn, setShowPreviewColumn] = useState(true);
@@ -49,6 +57,17 @@ export const AdminDashboard = () => {
 
       <div className=" mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex gap-2 mb-8">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
+              activeTab === "dashboard"
+                ? "bg-gray-900 text-white"
+                : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+            }`}
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            Dashboard
+          </button>
           <button
             onClick={() => setActiveTab("create")}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
@@ -95,8 +114,8 @@ export const AdminDashboard = () => {
           </button>
         </div>
 
+        {activeTab === "dashboard" && <AdminAnalytics />}
         {activeTab === "clients" && <ClientManager />}
-        {activeTab === "posts" && <PostList refresh={refreshPosts} />}
         {activeTab === "calendar" && <AdminCalendarView />}
         {activeTab === "create" && (
           <div
