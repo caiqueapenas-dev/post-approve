@@ -16,7 +16,7 @@ import {
   ExternalLink,
   Download,
 } from "lucide-react";
-import { downloadMedia } from "../lib/utils";
+import { downloadMedia, getStatusBadgeClasses } from "../lib/utils"; // Importa a nova função
 
 export const ClientPreview = () => {
   const { linkId } = useParams();
@@ -234,47 +234,18 @@ export const ClientPreview = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusMap = {
-      pending: {
-        text: "Pendente",
-        className: "bg-yellow-100 text-yellow-800",
-        icon: <Clock className="w-3 h-3" />,
-      },
-      change_requested: {
-        text: "Alteração Solicitada",
-        className: "bg-orange-100 text-orange-800",
-        icon: <AlertCircle className="w-3 h-3" />,
-      },
-      approved: {
-        text: "Aprovado",
-        className: "bg-green-100 text-green-800",
-        icon: <CheckCircle2 className="w-3 h-3" />,
-      },
-      agendado: {
-        text: "Agendado",
-        className: "bg-cyan-100 text-cyan-800",
-        icon: <Calendar className="w-3 h-3" />,
-      },
-      published: {
-        text: "Publicado",
-        className: "bg-blue-100 text-blue-800",
-        icon: <CheckCircle2 className="w-3 h-3" />,
-      },
-    };
-
-    const { text, className, icon } = statusMap[
-      status as keyof typeof statusMap
-    ] || {
-      text: status,
-      className: "bg-gray-100 text-gray-800",
-      icon: null,
-    };
+    const { badge, text, icon: iconColor } = getStatusBadgeClasses(status);
+    let IconComponent = Clock; // Default
+    if (status === "change_requested") IconComponent = AlertCircle;
+    if (status === "approved" || status === "published")
+      IconComponent = CheckCircle2;
+    if (status === "agendado") IconComponent = Calendar;
 
     return (
       <span
-        className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${className}`}
+        className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${badge}`}
       >
-        {icon}
+        <IconComponent className={`w-3 h-3 ${iconColor}`} />
         <span>{text}</span>
       </span>
     );

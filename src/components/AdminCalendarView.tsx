@@ -1,8 +1,18 @@
 import { useState, useEffect } from "react";
 import { supabase, Post, Client, PostType, PostStatus } from "../lib/supabase";
 import { CalendarView } from "./CalendarView";
-import { User, ImageIcon, ListFilter, ChevronsUpDown } from "lucide-react";
+import {
+  User,
+  ImageIcon,
+  ListFilter,
+  ChevronsUpDown,
+  Clock,
+  AlertCircle,
+  CheckCircle2,
+  Calendar as CalendarIcon, // Renomeia para evitar conflito
+} from "lucide-react";
 import { PostEditor } from "./PostEditor";
+import { getStatusBadgeClasses } from "../lib/utils"; // Importa a nova função
 
 export const AdminCalendarView = ({
   showTitle = true,
@@ -74,20 +84,8 @@ export const AdminCalendarView = ({
     const { data } = await supabase.from("clients").select("*").order("name");
     if (data) setClients(data);
   };
-  const getStatusColorClass = (status: PostStatus) => {
-    switch (status) {
-      case "pending":
-        return "text-yellow-800";
-      case "change_requested":
-        return "text-orange-800";
-      case "approved":
-        return "text-green-800";
-      case "published":
-        return "text-blue-800";
-      default:
-        return "text-gray-500";
-    }
-  };
+  // getStatusColorClass não é mais necessário para o texto
+
   useEffect(() => {
     const applyFilters = () => {
       let tempPosts = posts;
@@ -277,13 +275,37 @@ export const AdminCalendarView = ({
                           {post.client?.name}
                         </span>
                       </div>
-                      <p
-                        className={`text-sm mt-1 font-medium ${getStatusColorClass(
-                          post.status
-                        )}`}
-                      >
-                        {translateStatus(post.status)} -{" "}
-                        <span className="font-normal text-gray-500">
+                      {/* Badge de Status e Horário */}
+                      <div className="mt-1 flex items-center gap-2">
+                        {(() => {
+                          const {
+                            badge,
+                            text,
+                            icon: iconColor,
+                          } = getStatusBadgeClasses(post.status);
+                          let IconComponent = Clock; // Default
+                          if (post.status === "change_requested")
+                            IconComponent = AlertCircle;
+                          if (
+                            post.status === "approved" ||
+                            post.status === "published"
+                          )
+                            IconComponent = CheckCircle2;
+                          if (post.status === "agendado")
+                            IconComponent = CalendarIcon; // Usa o ícone renomeado
+
+                          return (
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${badge}`}
+                            >
+                              <IconComponent
+                                className={`w-3 h-3 ${iconColor}`}
+                              />
+                              <span>{text}</span>
+                            </span>
+                          );
+                        })()}
+                        <span className="text-xs text-gray-500">
                           {new Date(post.scheduled_date).toLocaleTimeString(
                             "pt-BR",
                             {
@@ -293,7 +315,7 @@ export const AdminCalendarView = ({
                             }
                           )}
                         </span>
-                      </p>
+                      </div>
                     </div>
                     <button
                       onClick={() => {
