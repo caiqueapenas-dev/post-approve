@@ -14,7 +14,12 @@ export const PostList = ({ refresh }: { refresh: number }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [filter, setFilter] = useState<
-    "all" | "pending" | "change_requested" | "approved" | "published"
+    | "all"
+    | "pending"
+    | "change_requested"
+    | "approved"
+    | "agendado"
+    | "published"
   >("all");
 
   useEffect(() => {
@@ -60,6 +65,8 @@ export const PostList = ({ refresh }: { refresh: number }) => {
         return <AlertCircle className="w-4 h-4 text-orange-600" />;
       case "approved":
         return <CheckCircle2 className="w-4 h-4 text-green-600" />;
+      case "agendado":
+        return <Calendar className="w-4 h-4 text-cyan-600" />;
       case "published":
         return <CheckCircle2 className="w-4 h-4 text-blue-600" />;
       default:
@@ -107,6 +114,7 @@ export const PostList = ({ refresh }: { refresh: number }) => {
               "pending",
               "change_requested",
               "approved",
+              "agendado",
               "published",
             ] as const
           ).map((status) => (

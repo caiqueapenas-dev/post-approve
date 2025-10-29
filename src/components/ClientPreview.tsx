@@ -37,7 +37,10 @@ export const ClientPreview = () => {
 
   useEffect(() => {
     if (linkId) {
-      fetchClientData();
+      // Roda a função de atualização de status antes de buscar os dados
+      supabase.rpc("update_scheduled_posts_to_published").then(() => {
+        fetchClientData();
+      });
     }
   }, [linkId]);
   // Bloqueia a rolagem do body quando um modal está aberto
@@ -231,6 +234,11 @@ export const ClientPreview = () => {
         text: "Aprovado",
         className: "bg-green-100 text-green-800",
         icon: <CheckCircle2 className="w-3 h-3" />,
+      },
+      agendado: {
+        text: "Agendado",
+        className: "bg-cyan-100 text-cyan-800",
+        icon: <Calendar className="w-3 h-3" />,
       },
       published: {
         text: "Publicado",

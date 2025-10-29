@@ -27,6 +27,7 @@ export type PostStatus =
   | "pending"
   | "change_requested"
   | "approved"
+  | "agendado"
   | "published";
 
 export type Post = {

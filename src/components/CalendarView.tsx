@@ -165,6 +165,8 @@ export const CalendarView = ({
         return "text-orange-800";
       case "approved":
         return "text-green-800";
+      case "agendado":
+        return "text-cyan-800";
       case "published":
         return "text-blue-800";
       default:

@@ -184,6 +184,7 @@ export const PostEditor = ({ post, onClose, onSuccess }: PostEditorProps) => {
                 <option value="pending">Pendente</option>
                 <option value="change_requested">Alteração Solicitada</option>
                 <option value="approved">Aprovado</option>
+                <option value="agendado">Agendado</option>
                 <option value="published">Publicado</option>
               </select>
             </div>

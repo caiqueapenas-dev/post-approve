@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS posts (
   post_type text NOT NULL CHECK (post_type IN ('feed', 'carousel', 'story', 'reels')),
   scheduled_date timestamptz NOT NULL,
   caption text DEFAULT '',
-  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'change_requested', 'approved', 'published')),
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'change_requested', 'approved', 'agendado', 'published')),
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
@@ -274,3 +274,21 @@ CREATE TRIGGER update_posts_updated_at
   BEFORE UPDATE ON posts
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
+
+  /*
+  ## Função de Automação de Status
+
+  Esta função atualiza todos os posts que estão com status 'agendado'
+  e cuja 'scheduled_date' já passou para 'publicado'.
+  
+  Ela deve ser chamada pelo front-end ou por um cron job (pg_cron).
+*/
+CREATE OR REPLACE FUNCTION update_scheduled_posts_to_published()
+RETURNS void AS $$
+BEGIN
+  UPDATE posts
+  SET status = 'publicado'
+  WHERE status = 'agendado'
+  AND scheduled_date <= now();
+END;
+$$ LANGUAGE plpgsql;
