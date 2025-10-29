@@ -7,7 +7,16 @@ import {
   getNextMonthRange,
   formatDateForInput,
 } from "../lib/dateUtils";
-import { BarChart, Loader2, User } from "lucide-react";
+import {
+  BarChart,
+  Loader2,
+  User,
+  AlertTriangle,
+  CheckCircle,
+  TrendingUp,
+  TrendingDown,
+  MinusCircle, // Ícone para status OK (neutro)
+} from "lucide-react";
 
 type DateFilter =
   | "today"
@@ -22,6 +31,10 @@ type ProcessedData = {
   name: string;
   color: string;
   count: number;
+  weekly_post_quota: number;
+  expected_posts: number;
+  quota_status: "ok" | "below" | "above" | "zero_quota";
+  needs_attention: boolean; // Flag para destacar clientes com 0 posts e cota > 0
 };
 
 export const AdminAnalytics = () => {
@@ -38,16 +51,36 @@ export const AdminAnalytics = () => {
   const [customEnd, setCustomEnd] = useState(formatDateForInput(new Date()));
 
   // Busca inicial de dados
+  // Busca inicial de dados
   useEffect(() => {
     const fetchData = async () => {
+      console.log("AdminAnalytics: Iniciando fetchData..."); // Log inicial
       setLoading(true);
       const [clientsRes, postsRes] = await Promise.all([
-        supabase.from("clients").select("*").order("name"),
-        supabase.from("posts").select("id, client_id, scheduled_date, status"),
+        supabase.from("clients").select("*").order("name"), // Busca clientes separadamente
+        supabase.from("posts").select("id, client_id, scheduled_date, status"), // Busca posts separadamente
       ]);
 
-      if (clientsRes.data) setClients(clientsRes.data as Client[]);
-      if (postsRes.data) setPosts(postsRes.data as Post[]);
+      // Lógica correta para filtrar CLIENTES
+      if (clientsRes.data) {
+        // Filtra clientes ocultos (is_hidden = true)
+        const filteredClients = (clientsRes.data as Client[]).filter(
+          (client) => !client.is_hidden // Exclui se is_hidden for true
+        );
+        console.log(
+          "AdminAnalytics: Setting filtered clients:",
+          filteredClients
+        ); // Log filtrado
+        setClients(filteredClients); // Seta os clientes JÁ FILTRADOS
+      }
+
+      // Lógica correta para POSTS
+      if (postsRes.data) {
+        console.log("AdminAnalytics: Setting posts:", postsRes.data); // Log antes de setar posts
+        setPosts(postsRes.data as Post[]);
+      }
+
+      console.log("AdminAnalytics: fetchData concluído."); // Log final
       setLoading(false);
     };
     fetchData();
@@ -113,9 +146,81 @@ export const AdminAnalytics = () => {
       count: postCountMap.get(client.id) || 0,
     }));
 
-    // 5. Ordena por contagem (maior primeiro)
-    return data.sort((a, b) => b.count - a.count);
-  }, [posts, clients, statusFilter, dateRange]);
+    // 5. Calcula posts esperados e status da cota
+    const dataWithQuota = clients.map((client) => {
+      const actualCount = postCountMap.get(client.id) || 0;
+      const weeklyQuota = client.weekly_post_quota || 0;
+      let expectedPosts = 0;
+      let quotaStatus: ProcessedData["quota_status"] = "zero_quota";
+      let needsAttention = false;
+
+      if (weeklyQuota > 0) {
+        // Calcula semanas no período (simplificado para semana/mês)
+        let weeksInRange = 1; // Default para 'today' e 'this_week'
+
+        if (dateFilter === "this_month") {
+          // Aproximação: 4 semanas por mês
+          const today = new Date();
+          const daysInMonth = new Date(
+            today.getFullYear(),
+            today.getMonth() + 1,
+            0
+          ).getDate();
+          weeksInRange = Math.ceil(daysInMonth / 7); // Calcula semanas no mês atual
+        } else if (dateFilter === "next_month") {
+          const today = new Date();
+          const daysInNextMonth = new Date(
+            today.getFullYear(),
+            today.getMonth() + 2,
+            0
+          ).getDate();
+          weeksInRange = Math.ceil(daysInNextMonth / 7); // Calcula semanas no próximo mês
+        } else if (dateFilter === "custom") {
+          const diffTime = Math.abs(
+            dateRange.end.getTime() - dateRange.start.getTime()
+          );
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          weeksInRange = Math.max(1, Math.ceil(diffDays / 7)); // Pelo menos 1 semana
+        }
+
+        expectedPosts = Math.round(weeklyQuota * weeksInRange); // Arredonda para inteiro
+
+        if (actualCount < expectedPosts) {
+          quotaStatus = "below";
+        } else if (actualCount > expectedPosts) {
+          quotaStatus = "above";
+        } else {
+          quotaStatus = "ok";
+        }
+
+        // Marca para atenção se tem cota mas nenhum post no período
+        if (actualCount === 0) {
+          needsAttention = true;
+        }
+      } else {
+        quotaStatus = "zero_quota";
+      }
+
+      return {
+        id: client.id,
+        name: client.display_name || client.name,
+        color: client.color || "#6b7280", // cinza
+        count: actualCount,
+        weekly_post_quota: weeklyQuota,
+        expected_posts: expectedPosts,
+        quota_status: quotaStatus,
+        needs_attention: needsAttention,
+      };
+    });
+
+    // 6. Ordena: clientes que precisam de atenção primeiro, depois por nome
+    return dataWithQuota.sort((a, b) => {
+      if (a.needs_attention && !b.needs_attention) return -1;
+      if (!a.needs_attention && b.needs_attention) return 1;
+      // Se ambos precisam/não precisam de atenção, ordena por nome
+      return a.name.localeCompare(b.name);
+    });
+  }, [posts, clients, statusFilter, dateRange, dateFilter]); // Adiciona dateFilter como dependência
 
   // Encontra a contagem máxima para a escala do gráfico
   const maxCount = useMemo(() => {
@@ -225,10 +330,24 @@ export const AdminAnalytics = () => {
               Nenhum dado encontrado para os filtros selecionados.
             </p>
           )}
+          {/* Header da Tabela */}
+          <div className="flex items-center gap-3 text-xs font-semibold text-gray-500 mb-2 px-1">
+            <div className="w-1/3">CLIENTE</div>
+            <div className="w-1/2">POSTS FEITOS (PERÍODO)</div>
+            <div className="w-1/12 text-left">META</div>
+            <div className="w-1/12 text-left">STATUS</div>
+          </div>
+
           {processedData.map((client) => (
             <div key={client.id} className="flex items-center gap-3 group">
               {/* Nome do Cliente */}
-              <div className="w-1/3 truncate text-sm font-medium text-gray-700 flex items-center gap-2">
+              <div
+                className={`w-1/3 truncate text-sm font-medium flex items-center gap-2 ${
+                  client.needs_attention
+                    ? "text-red-600 font-bold"
+                    : "text-gray-700"
+                }`}
+              >
                 <div
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: client.color }}
@@ -250,9 +369,49 @@ export const AdminAnalytics = () => {
                   />
                 )}
               </div>
-              {/* Contagem */}
+              {/* Contagem / Meta */}
               <div className="w-1/12 text-left text-sm font-semibold text-gray-900">
-                {client.count}
+                {client.weekly_post_quota > 0
+                  ? `${client.count}/${client.expected_posts}`
+                  : client.count}
+              </div>
+              {/* Status da Cota */}
+              <div
+                className="w-1/12 flex justify-start items-center"
+                title={
+                  client.quota_status === "below"
+                    ? `Abaixo da meta (${client.expected_posts} esperados)`
+                    : client.quota_status === "above"
+                    ? `Acima da meta (${client.expected_posts} esperados)`
+                    : client.quota_status === "ok"
+                    ? `Meta atingida (${client.expected_posts} esperados)`
+                    : "Sem cota definida"
+                }
+              >
+                {client.quota_status === "below" && (
+                  <TrendingDown
+                    className={`w-5 h-5 ${
+                      client.needs_attention
+                        ? "text-red-500"
+                        : "text-orange-500"
+                    }`}
+                  />
+                )}
+                {client.quota_status === "above" && (
+                  <TrendingUp className="w-5 h-5 text-green-500" />
+                )}
+                {client.quota_status === "ok" && (
+                  <CheckCircle className="w-5 h-5 text-blue-500" />
+                )}
+                {client.quota_status === "zero_quota" && (
+                  <MinusCircle className="w-5 h-5 text-gray-400" />
+                )}
+                {client.needs_attention &&
+                  client.quota_status !== "zero_quota" && (
+                    <span title="Nenhum post no período, mas possui cota.">
+                      <AlertTriangle className="w-5 h-5 text-red-500 ml-1" />
+                    </span>
+                  )}
               </div>
             </div>
           ))}

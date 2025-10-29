@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS clients (
   color text DEFAULT '#9ca3af', -- Adicionado default gray-400
   report_link_url text,
   meta_calendar_url text,
+  weekly_post_quota integer DEFAULT 0, -- Adiciona a cota semanal
   unique_link_id text UNIQUE NOT NULL,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
@@ -269,6 +270,12 @@ CREATE TRIGGER update_clients_updated_at
   BEFORE UPDATE ON clients
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
+
+-- Garante que a cota não seja negativa
+ALTER TABLE clients ADD CONSTRAINT clients_weekly_post_quota_check CHECK (weekly_post_quota >= 0);
+
+-- Adiciona a coluna para ocultar clientes
+ALTER TABLE clients ADD COLUMN is_hidden boolean DEFAULT false;
 
 CREATE TRIGGER update_posts_updated_at
   BEFORE UPDATE ON posts

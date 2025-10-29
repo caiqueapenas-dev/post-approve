@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Post, PostStatus } from "../lib/supabase";
+import { Post } from "../lib/supabase"; // Correção 1: Removido 'PostStatus' não utilizado
 import {
   ChevronLeft,
   ChevronRight,
@@ -9,6 +9,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { getStatusBadgeClasses } from "../lib/utils";
+
 // Helper para determinar a cor do texto (preto ou branco) com base na cor de fundo
 const getTextColorForBackground = (hexColor: string | null): string => {
   if (!hexColor) return "text-white";
@@ -34,6 +35,7 @@ const getTextColorForBackground = (hexColor: string | null): string => {
     return "text-white"; // Fallback em caso de erro
   }
 };
+
 type CalendarViewProps = {
   posts: Post[];
   onPostClick: (post: Post) => void;
@@ -531,3 +533,4 @@ export const CalendarView = ({
     </div>
   );
 };
+// Correção 2: Removido '}' extra do final do arquivo

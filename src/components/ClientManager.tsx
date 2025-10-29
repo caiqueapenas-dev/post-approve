@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   X,
   Calendar,
+  ClipboardList, // Adiciona o ícone para a cota
 } from "lucide-react";
 
 export const ClientManager = () => {
@@ -31,7 +32,9 @@ export const ClientManager = () => {
   const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(
     null
   );
+  const [editWeeklyQuota, setEditWeeklyQuota] = useState(0); // Estado para a cota
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editIsHidden, setEditIsHidden] = useState(false); // Estado para ocultar
 
   useEffect(() => {
     fetchClients();
@@ -85,6 +88,8 @@ export const ClientManager = () => {
     setEditReportLink(client.report_link_url || "");
     setEditMetaCalendarLink(client.meta_calendar_url || "");
     setEditColor(client.color || "#9ca3af");
+    setEditWeeklyQuota(client.weekly_post_quota || 0); // Define a cota inicial
+    setEditIsHidden(client.is_hidden || false); // Define o estado inicial de oculto
     setShowEditModal(client);
   };
 
@@ -122,6 +127,8 @@ export const ClientManager = () => {
           report_link_url: editReportLink || null,
           meta_calendar_url: editMetaCalendarLink || null,
           color: editColor,
+          weekly_post_quota: editWeeklyQuota, // Atualiza a cota
+          is_hidden: editIsHidden, // Atualiza o status de oculto
         })
         .eq("id", showEditModal.id);
 
@@ -433,8 +440,49 @@ export const ClientManager = () => {
                   placeholder="https...business.facebook.com/latest/planner"
                 />
               </div>
+              {/* Checkbox para Ocultar Cliente */}
+              <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg">
+                <input
+                  id="editIsHidden"
+                  type="checkbox"
+                  checked={editIsHidden}
+                  onChange={(e) => setEditIsHidden(e.target.checked)}
+                  className="w-4 h-4 rounded text-gray-900 focus:ring-gray-900 border-gray-300"
+                />
+                <label
+                  htmlFor="editIsHidden"
+                  className="text-sm font-medium text-gray-700 cursor-pointer"
+                >
+                  Ocultar este cliente (não aparecerá em listas/dashboards)
+                </label>
+              </div>
+              <div>
+                <label
+                  htmlFor="editWeeklyQuota" // ID correto aqui
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  <ClipboardList className="w-4 h-4 inline mr-1" />{" "}
+                  {/* Usando ClipboardList */}
+                  Posts por Semana (Contrato)
+                </label>
+                <input
+                  id="editWeeklyQuota" // E aqui
+                  type="number"
+                  min="0"
+                  step="1" // Adicionado step para números inteiros
+                  value={editWeeklyQuota}
+                  onChange={(e) =>
+                    setEditWeeklyQuota(parseInt(e.target.value, 10) || 0)
+                  }
+                  required
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
+                  placeholder="Ex: 3"
+                />
+              </div>
 
               <div className="flex gap-3">
+                {" "}
+                {/* Adiciona a chave de fechamento '>' */}
                 <button
                   type="button"
                   onClick={() => setShowEditModal(null)}

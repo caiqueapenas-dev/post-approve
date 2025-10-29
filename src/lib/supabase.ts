@@ -20,6 +20,8 @@ export type Client = {
   updated_at: string;
   report_link_url: string | null;
   meta_calendar_url: string | null;
+  weekly_post_quota: number; // Adiciona a cota semanal
+  is_hidden: boolean; // Adiciona o campo para ocultar
 };
 
 export type PostType = "feed" | "carousel" | "story" | "reels";

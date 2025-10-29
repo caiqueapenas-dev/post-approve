@@ -499,7 +499,11 @@ export const PostCreator = ({
     const fetchClients = async () => {
       // fetchClients definido aqui
       const { data } = await supabase.from("clients").select("*").order("name");
-      if (data) setClients(data);
+      if (data) {
+        // Filtra clientes ocultos (is_hidden = true)
+        const filteredData = data.filter((client: Client) => !client.is_hidden); // Exclui se is_hidden for true
+        setClients(filteredData);
+      }
     };
     fetchClients();
   }, []);

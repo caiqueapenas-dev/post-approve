@@ -59,9 +59,14 @@ export const PostList = ({ refresh }: { refresh: number }) => {
     };
     fetchClients();
     fetchPosts();
-  }, [refresh]);
+  }, [refresh]); // Log para verificar se fetchClients é chamado
+
+  console.log("PostList: Renderizando ou Atualizando. Refresh:", refresh); // Log de renderização/refresh
 
   const fetchPosts = async () => {
+    console.log(
+      `PostList: Iniciando fetchPosts. ClientId: ${selectedClientId}, Filter: ${filter}`
+    ); // Log inicial fetchPosts
     let query = supabase
       .from("posts")
       .select(
@@ -81,8 +86,17 @@ export const PostList = ({ refresh }: { refresh: number }) => {
       query = query.eq("status", filter);
     }
 
-    const { data } = await query;
-    if (data) setPosts(data as any);
+    const { data, error } = await query;
+    if (error) {
+      console.error("PostList: Erro ao buscar posts:", error); // Log de erro
+    } else if (data) {
+      console.log("PostList: Posts buscados:", data); // Log dos dados
+      setPosts(data as any);
+    } else {
+      console.log("PostList: Nenhum post encontrado para os filtros."); // Log se não houver dados
+      setPosts([]); // Limpa os posts se nada for retornado
+    }
+    console.log("PostList: fetchPosts concluído."); // Log final fetchPosts
   };
 
   const translatePostType = (type: string) => {
