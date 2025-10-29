@@ -78,12 +78,11 @@ export const PostPreviewer = ({
             >
               {isSingleVideo ? (
                 <video
-                  src={images[0].preview}
+                  src={images[0].preview + "#t=0.1"}
                   controls
                   playsInline
                   className="w-full h-full object-contain"
                   preload="metadata"
-                  poster={images[0].preview + "#t=0.1"}
                 >
                   Seu navegador não suporta vídeos.
                 </video>

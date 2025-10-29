@@ -910,9 +910,15 @@ export const PostCreator = ({
                   )}
                   {/* Imagem/Preview */}
                   {isVideo ? (
-                    <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+                    <video
+                      src={image.preview + "#t=0.1"}
+                      preload="metadata"
+                      muted
+                      playsInline
+                      className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                    >
                       <Video className="w-6 h-6 text-gray-500" />
-                    </div>
+                    </video>
                   ) : (
                     <img
                       src={image.preview}
