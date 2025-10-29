@@ -65,6 +65,36 @@ export const PostEditor = ({ post, onClose, onSuccess }: PostEditorProps) => {
       setLoading(false);
     }
   };
+
+  const handleScheduleAndPost = async () => {
+    setLoading(true);
+    try {
+      // 1. Atualiza o status para 'agendado'
+      const { error } = await supabase
+        .from("posts")
+        .update({ status: "agendado" })
+        .eq("id", post.id);
+
+      if (error) throw error;
+
+      // 2. Abre o link da Meta em nova aba
+      if (post.client?.meta_calendar_url) {
+        window.open(
+          post.client.meta_calendar_url,
+          "_blank",
+          "noopener,noreferrer"
+        );
+      }
+
+      // 3. Fecha o modal e atualiza a lista
+      onSuccess();
+    } catch (error) {
+      console.error("Error setting status to scheduled:", error);
+      alert("Falha ao definir o status como agendado.");
+    } finally {
+      setLoading(false);
+    }
+  };
   const handleDelete = async () => {
     if (
       !confirm(
@@ -201,15 +231,15 @@ export const PostEditor = ({ post, onClose, onSuccess }: PostEditorProps) => {
               Excluir
             </button>
             {status === "approved" && post.client?.meta_calendar_url && (
-              <a
-                href={post.client.meta_calendar_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              <button
+                type="button"
+                onClick={handleScheduleAndPost}
+                disabled={loading}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
                 <ExternalLink className="w-4 h-4" />
-                Postar
-              </a>
+                Agendar e Postar
+              </button>
             )}
             <button
               type="button"
