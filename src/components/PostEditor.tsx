@@ -230,17 +230,18 @@ export const PostEditor = ({ post, onClose, onSuccess }: PostEditorProps) => {
               <Trash2 className="w-4 h-4" />
               Excluir
             </button>
-            {status === "approved" && post.client?.meta_calendar_url && (
-              <button
-                type="button"
-                onClick={handleScheduleAndPost}
-                disabled={loading}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Agendar e Postar
-              </button>
-            )}
+            {(status === "approved" || status === "agendado") &&
+              post.client?.meta_calendar_url && (
+                <button
+                  type="button"
+                  onClick={handleScheduleAndPost}
+                  disabled={loading}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Agendar e Postar
+                </button>
+              )}
             <button
               type="button"
               onClick={onClose}
