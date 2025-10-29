@@ -341,6 +341,30 @@ export const CalendarView = ({
           ))}
           {dates.map((date) => {
             const dayPosts = getPostsForDate(date);
+
+            // Lógica da Borda de Status
+            let statusBorderClass = "";
+            if (dayPosts.length > 0) {
+              const hasPending = dayPosts.some(
+                (p) => p.status === "pending" || p.status === "change_requested"
+              );
+              const hasApproved = dayPosts.some((p) => p.status === "approved");
+              const hasAgendado = dayPosts.some((p) => p.status === "agendado");
+              const allPublished = dayPosts.every(
+                (p) => p.status === "published"
+              );
+
+              if (hasPending) {
+                statusBorderClass = "border-t-4 border-t-yellow-400"; // Pendente (Prioridade)
+              } else if (hasApproved) {
+                statusBorderClass = "border-t-4 border-t-green-500"; // Aprovado (Ação)
+              } else if (hasAgendado) {
+                statusBorderClass = "border-t-4 border-t-cyan-500"; // Agendado
+              } else if (allPublished) {
+                statusBorderClass = "border-t-4 border-t-blue-500"; // Publicado
+              }
+            }
+
             return (
               <button
                 type="button"
@@ -358,7 +382,7 @@ export const CalendarView = ({
                     : isToday(date)
                     ? "border-gray-900 bg-gray-50"
                     : "border-gray-200 bg-white"
-                }`}
+                } ${statusBorderClass}`}
               >
                 <div
                   className={`text-sm font-medium mb-1 ${
