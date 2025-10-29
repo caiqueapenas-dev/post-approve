@@ -1,7 +1,31 @@
 import { useState } from "react";
 import { Post, PostStatus } from "../lib/supabase";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+// Helper para determinar a cor do texto (preto ou branco) com base na cor de fundo
+const getTextColorForBackground = (hexColor: string | null): string => {
+  if (!hexColor) return "text-white";
 
+  let hex = hexColor.startsWith("#") ? hexColor.slice(1) : hexColor;
+
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
+
+  if (hex.length !== 6) return "text-white"; // Fallback
+
+  try {
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+
+    // Fórmula YIQ de luminância (percebe o brilho)
+    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+    // Se o fundo for claro (>= 150), usa texto preto, senão, texto branco
+    return yiq >= 150 ? "text-black" : "text-white";
+  } catch (e) {
+    return "text-white"; // Fallback em caso de erro
+  }
+};
 type CalendarViewProps = {
   posts: Post[];
   onPostClick: (post: Post) => void;
@@ -345,49 +369,122 @@ export const CalendarView = ({
                 >
                   {date.getUTCDate()}
                 </div>
-                {dayPosts.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {dayPosts.slice(0, 3).map((post) => (
-                      <div
-                        key={post.id}
-                        style={{
-                          backgroundColor: post.client?.color || "#111827",
-                        }}
-                        onClick={(e) => {
-                          // Se onDateClick (modal do dia) estiver ativo, o clique no dot não faz nada
-                          if (onDateClick) {
-                            e.stopPropagation();
-                            return;
-                          }
-                          // Se for admin (sem onDateClick), o clique no dot abre o editor
-                          e.stopPropagation();
-                          onPostClick(post);
-                        }}
-                        className={`w-2 h-2 rounded-full ${
-                          !onDateClick
-                            ? "hover:scale-125 transition-transform cursor-pointer"
-                            : "cursor-default" // Clicável é o dia, não o dot
-                        }`}
-                        title={
-                          post.client?.name ||
-                          new Date(post.scheduled_date).toLocaleTimeString(
-                            "pt-BR",
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              timeZone: "UTC",
-                            }
-                          )
-                        }
-                      />
-                    ))}
-                    {dayPosts.length > 3 && (
-                      <span className="text-xs text-gray-500">
-                        +{dayPosts.length - 3}
-                      </span>
-                    )}
-                  </div>
-                )}
+                {/* (Alteração 5) Agrupa posts por COR do cliente e exibe contagem DENTRO do dot */}
+                {(() => {
+                  // Limite de quantos *grupos de cores* mostrar
+                  const COLOR_DOT_LIMIT = 5; // Você pode ajustar este limite
+
+                  // 1. Agrupa posts por COR e conta
+                  const colorsMap = new Map<
+                    string, // A chave agora é a COR
+                    {
+                      color: string;
+                      clientNames: Set<string>; // Guarda os nomes dos clientes dessa cor
+                      firstPost: Post; // Para o clique (pega o primeiro post encontrado dessa cor)
+                      count: number; // Total de posts dessa cor
+                    }
+                  >();
+
+                  // Ordena os posts do dia por hora para pegar o 'firstPost' consistentemente
+                  const sortedDayPosts = dayPosts.sort(
+                    (a, b) =>
+                      new Date(a.scheduled_date).getTime() -
+                      new Date(b.scheduled_date).getTime()
+                  );
+
+                  sortedDayPosts.forEach((post) => {
+                    const clientColor = post.client?.color || "#9ca3af"; // Usa a cor como chave
+                    const clientName = post.client?.name || "Post";
+
+                    if (colorsMap.has(clientColor)) {
+                      const existingEntry = colorsMap.get(clientColor)!;
+                      existingEntry.count += 1;
+                      existingEntry.clientNames.add(clientName); // Adiciona o nome do cliente ao Set
+                    } else {
+                      colorsMap.set(clientColor, {
+                        color: clientColor,
+                        clientNames: new Set([clientName]), // Inicia o Set com o nome do cliente
+                        firstPost: post, // Guarda o primeiro post encontrado dessa cor
+                        count: 1,
+                      });
+                    }
+                  });
+
+                  // 2. Prepara os arrays para renderizar
+                  const colorDots = Array.from(colorsMap.values());
+                  const dotsToShow = colorDots.slice(0, COLOR_DOT_LIMIT);
+
+                  // 3. Calcula o +X (contagem de *posts* restantes)
+                  const postsInDotsShown = dotsToShow.reduce(
+                    (acc, dot) => acc + dot.count,
+                    0
+                  );
+                  const remainingPostCount = dayPosts.length - postsInDotsShown;
+                  const showPlus = remainingPostCount > 0;
+
+                  if (dayPosts.length === 0) return null;
+
+                  // 4. Renderiza
+                  return (
+                    <div className="flex flex-wrap gap-x-2 gap-y-1 items-center">
+                      {dotsToShow.map((colorDot) => {
+                        // Calcula a cor do texto (preto ou branco)
+                        const textColorClass = getTextColorForBackground(
+                          colorDot.color
+                        );
+                        // Cria a string de nomes de clientes para o tooltip
+                        const clientNamesString = Array.from(
+                          colorDot.clientNames
+                        ).join(", ");
+                        return (
+                          <div
+                            key={colorDot.color} // A chave do React agora é a cor
+                            onClick={(e) => {
+                              if (onDateClick) {
+                                e.stopPropagation();
+                                return; // Deixa o modal do dia abrir
+                              }
+                              // Admin: abre o editor do *primeiro post encontrado* dessa cor
+                              e.stopPropagation();
+                              onPostClick(colorDot.firstPost);
+                            }}
+                            className={`flex items-center justify-center w-4 h-4 rounded-full ${
+                              !onDateClick
+                                ? "hover:opacity-75 transition-opacity cursor-pointer"
+                                : "cursor-default"
+                            }`}
+                            style={{ backgroundColor: colorDot.color }}
+                            title={`${clientNamesString} (${
+                              colorDot.count
+                            } post${colorDot.count > 1 ? "s" : ""})`} // Tooltip mostra os nomes dos clientes
+                          >
+                            {/* Número DENTRO do dot */}
+                            {colorDot.count > 1 && (
+                              <span
+                                className={`text-[10px] font-bold ${textColorClass}`}
+                                style={{
+                                  textShadow:
+                                    textColorClass === "text-white"
+                                      ? "0 0 2px rgba(0,0,0,0.7)"
+                                      : "0 0 2px rgba(255,255,255,0.7)",
+                                }}
+                              >
+                                {colorDot.count > 9 ? "9+" : colorDot.count}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* O +X restante */}
+                      {showPlus && (
+                        <span className="text-xs text-gray-500">
+                          +{remainingPostCount}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
               </button>
             );
           })}
