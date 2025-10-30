@@ -163,6 +163,7 @@ export const ClientPreview = () => {
           .select(
             `
           *,
+          client:clients(*),
           images:post_images(*),
           change_requests(*)
         `
