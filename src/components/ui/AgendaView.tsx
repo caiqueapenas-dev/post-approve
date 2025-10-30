@@ -28,6 +28,7 @@ type AgendaViewProps = {
   onApprove: (group: GroupedPost) => void;
   onChangeRequest: (group: GroupedPost) => void;
   onDownload: (image: PostImage) => void;
+  groupBy: "status" | "format";
 };
 
 // Função para formatar data (simplificada para este componente)
@@ -52,20 +53,21 @@ const formatDate = (date: Date) => {
 };
 
 // Função para obter o status do grupo (copiado de ClientPreview)
-const getStatusBadge = (status: string) => {
-  const { badge, text, icon: iconColor } = getStatusBadgeClasses(status);
-  let IconComponent = CheckCircle2; // Default
-  if (status === "pending") IconComponent = CheckCircle2;
-  if (status === "change_requested") IconComponent = MessageSquare;
-
-  return (
-    <span
-      className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${badge}`}
-    >
-      <IconComponent className={`w-3 h-3 ${iconColor}`} />
-      <span>{text}</span>
-    </span>
-  );
+const translateStatus = (status: string) => {
+  switch (status) {
+    case "pending":
+      return "Pendente";
+    case "change_requested":
+      return "Alteração Solicitada";
+    case "approved":
+      return "Aprovado";
+    case "agendado":
+      return "Agendado";
+    case "published":
+      return "Publicado";
+    default:
+      return status;
+  }
 };
 
 // Função para traduzir o tipo (copiado de ClientPreview)
@@ -87,25 +89,22 @@ const translatePostType = (type: string) => {
 /**
  * Gera um mapa de posts agrupados por dia (YYYY-MM-DD)
  */
-const groupPostsByDay = (
-  groupedPosts: GroupedPost[]
+const groupPosts = (
+  groupedPosts: GroupedPost[],
+  groupBy: "status" | "format"
 ): Map<string, GroupedPost[]> => {
   const map = new Map<string, GroupedPost[]>();
 
   for (const group of groupedPosts) {
-    const d = new Date(group.scheduled_date);
-    // Chave no formato YYYY-MM-DD
-    const dayKey = `${d.getUTCFullYear()}-${String(
-      d.getUTCMonth() + 1
-    ).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+    const key = groupBy === "status" ? group.status : group.posts[0].post_type;
 
-    if (!map.has(dayKey)) {
-      map.set(dayKey, []);
+    if (!map.has(key)) {
+      map.set(key, []);
     }
-    map.get(dayKey)!.push(group);
+    map.get(key)!.push(group);
   }
 
-  // Ordena os posts dentro de cada dia pela hora
+  // Ordena os posts dentro de cada grupo pela data
   map.forEach((posts) => {
     posts.sort(
       (a, b) =>
@@ -125,12 +124,10 @@ export const AgendaView = ({
   onDownload,
 }: AgendaViewProps) => {
   // 1. Agrupa os posts por dia
-  const postsByDay = groupPostsByDay(groupedPosts);
+  const postsByGroup = groupPosts(groupedPosts, groupBy);
 
   // 2. Obtém as chaves (dias) e ordena
-  const sortedDays = Array.from(postsByDay.keys()).sort(
-    (a, b) => new Date(a).getTime() - new Date(b).getTime()
-  );
+  const sortedGroups = Array.from(postsByGroup.keys()).sort();
 
   if (groupedPosts.length === 0) {
     return (
@@ -142,20 +139,19 @@ export const AgendaView = ({
 
   return (
     <div className="space-y-6">
-      {sortedDays.map((dayKey) => {
-        const posts = postsByDay.get(dayKey)!;
-        const dateInfo = formatDate(new Date(dayKey + "T00:00:00Z")); // Converte a chave de volta para data
+      {sortedGroups.map((groupKey) => {
+        const posts = postsByGroup.get(groupKey)!;
 
         return (
           // Container do Dia
           <div
-            key={dayKey}
+            key={groupKey}
             className="bg-white rounded-xl shadow-sm overflow-hidden p-4 sm:p-6"
           >
             <div className="flex items-center gap-2 mb-4">
               <Calendar className="w-5 h-5 text-gray-700" />
               <h3 className="text-lg font-bold text-gray-900">
-                {dateInfo.date} - {dateInfo.day}
+                {groupBy === "status" ? translateStatus(groupKey) : translatePostType(groupKey)}
               </h3>
             </div>
             {/* Lista de Posts para este dia */}

@@ -41,7 +41,7 @@ export const ClientPreview = () => {
   const [client, setClient] = useState<Client | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [pageLoading, setPageLoading] = useState(true); // Estado de carregamento da página
-  const [viewMode, setViewMode] = useState<"agenda" | "calendar">("agenda"); // Alterado padrão para "agenda"
+  const [viewOptions, setViewOptions] = useState<{ groupBy: "status" | "format", filter: string }>({ groupBy: "status", filter: "all" });
   const [selectedGroup, setSelectedGroup] = useState<GroupedPost | null>(null); // Renomeado de selectedPost
   const [showChangeRequest, setShowChangeRequest] = useState(false);
   const [changeType, setChangeType] = useState<
@@ -489,38 +489,26 @@ export const ClientPreview = () => {
 
       <div className="max-w-4xl mx-auto px-2 py-6 space-y-6">
         <div className="flex gap-2">
-          <button
-            onClick={() => setViewMode("agenda")}
-            className={`flex items-center gap-2 px-2 py-2 rounded-lg font-medium transition-colors ${
-              viewMode === "agenda"
-                ? "bg-gray-900 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
-            }`}
+          <select
+            value={viewOptions.groupBy}
+            onChange={(e) => setViewOptions({ ...viewOptions, groupBy: e.target.value as "status" | "format" })}
+            className="p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900 min-w-[150px]"
           >
-            <List className="w-4 h-4" />
-            Agenda
-          </button>
-          <button
-            onClick={() => setViewMode("calendar")}
-            className={`flex items-center gap-2 px-2 py-2 rounded-lg font-medium transition-colors ${
-              viewMode === "calendar"
-                ? "bg-gray-900 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
-            }`}
+            <option value="status">Agrupar por Status</option>
+            <option value="format">Agrupar por Formato</option>
+          </select>
+          <select
+            value={viewOptions.filter}
+            onChange={(e) => setViewOptions({ ...viewOptions, filter: e.target.value })}
+            className="p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900 min-w-[150px]"
           >
-            <Calendar className="w-4 h-4" />
-            Calendário
-          </button>
-
-          {client.report_link_url && (
-            <button
-              onClick={() => setShowLeaveModal(true)}
-              className={`flex items-center gap-2 px-2 py-2 rounded-lg font-medium transition-colors bg-white text-gray-700 hover:bg-gray-100 border border-gray-200`}
-            >
-              <BarChart3 className="w-4 h-4" />
-              Resultados
-            </button>
-          )}
+            <option value="all">Todos os Posts</option>
+            <option value="pending">Pendente</option>
+            <option value="change_requested">Alteração Solicitada</option>
+            <option value="approved">Aprovado</option>
+            <option value="agendado">Agendado</option>
+            <option value="published">Publicado</option>
+          </select>
         </div>
 
         {viewMode === "calendar" ? (
@@ -534,7 +522,7 @@ export const ClientPreview = () => {
         ) : (
           // --- NOVO: Renderiza a AgendaView ---
           <AgendaView
-            groupedPosts={[...pendingGroupedPosts, ...approvedGroupedPosts]}
+            groupedPosts={[...pendingGroupedPosts, ...approvedGroupedPosts].filter(post => viewOptions.filter === "all" || post.status === viewOptions.filter)}
             loading={loading}
             onApprove={handleApproveGroup}
             onChangeRequest={(group) => {
@@ -542,6 +530,7 @@ export const ClientPreview = () => {
               setShowChangeRequest(true);
             }}
             onDownload={handleDownload}
+            groupBy={viewOptions.groupBy}
           />
         )}
       </div>
