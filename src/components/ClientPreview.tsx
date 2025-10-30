@@ -15,6 +15,7 @@ import {
   BarChart3,
   ExternalLink,
   Download,
+  Loader2, // Adiciona o ícone de carregamento
 } from "lucide-react";
 import { downloadMedia, getStatusBadgeClasses } from "../lib/utils"; // Importa a nova função
 
@@ -22,6 +23,7 @@ export const ClientPreview = () => {
   const { linkId } = useParams();
   const [client, setClient] = useState<Client | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [pageLoading, setPageLoading] = useState(true); // Estado de carregamento da página
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showChangeRequest, setShowChangeRequest] = useState(false);
@@ -53,88 +55,97 @@ export const ClientPreview = () => {
       document.body.classList.remove("overflow-hidden");
     }
 
-    // Cleanup: Remove a classe ao desmontar o componente
     return () => {
       document.body.classList.remove("overflow-hidden");
     };
-  }, [selectedPost, showDateModal, showLeaveModal]);
+  }, [selectedPost, showDateModal, showLeaveModal]); // <-- Esta linha estava faltando
+
   const fetchClientData = async () => {
-    const { data: clientData } = await supabase
-      .from("clients")
-      .select("*")
-      .eq("unique_link_id", linkId)
-      .maybeSingle();
+    try {
+      const { data: clientData } = await supabase
+        .from("clients")
+        .select("*")
+        .eq("unique_link_id", linkId)
+        .maybeSingle();
 
-    if (!clientData) return;
+      if (!clientData) {
+        setClient(null);
+        return; // O finally cuidará do loading
+      }
 
-    setClient(clientData);
+      const groupMarker = "group:";
+      const groupMeta = clientData.meta_calendar_url;
+      let postsData: Post[] | null = null;
 
-    const groupMarker = "group:";
-    const groupMeta = clientData.meta_calendar_url;
-    let postsData: Post[] | null = null;
+      if (groupMeta && groupMeta.startsWith(groupMarker)) {
+        // É um cliente agrupador
+        const clientNames = groupMeta
+          .substring(groupMarker.length)
+          .split(",")
+          .map((name: string) => name.trim())
+          .filter((name: string) => name.length > 0);
 
-    if (groupMeta && groupMeta.startsWith(groupMarker)) {
-      // É um cliente agrupador
-      const clientNames = groupMeta
-        .substring(groupMarker.length)
-        .split(",")
-        .map((name: string) => name.trim())
-        .filter((name: string) => name.length > 0);
+        if (clientNames.length > 0) {
+          // 1. Buscar os IDs dos clientes pelos nomes
+          const { data: clientIdsData, error: idsError } = await supabase
+            .from("clients")
+            .select("id")
+            .in("name", clientNames);
 
-      if (clientNames.length > 0) {
-        // 1. Buscar os IDs dos clientes pelos nomes
-        const { data: clientIdsData, error: idsError } = await supabase
-          .from("clients")
-          .select("id")
-          .in("name", clientNames);
+          if (idsError) {
+            console.error("Error fetching client IDs for group:", idsError);
+            setPosts([]);
+            return;
+          }
 
-        if (idsError) {
-          console.error("Error fetching client IDs for group:", idsError);
-          setPosts([]);
-          return;
-        }
+          const clientIds = clientIdsData.map((c) => c.id);
 
-        const clientIds = clientIdsData.map((c) => c.id);
-
-        if (clientIds.length > 0) {
-          // 2. Buscar posts onde o client_id está na lista de IDs
-          const { data: groupPostsData } = await supabase
-            .from("posts")
-            .select(
-              `
+          if (clientIds.length > 0) {
+            // 2. Buscar posts onde o client_id está na lista de IDs
+            const { data: groupPostsData } = await supabase
+              .from("posts")
+              .select(
+                `
               *,
               client:clients(*),
               images:post_images(*),
               change_requests(*)
             `
-            )
-            .in("client_id", clientIds)
-            .order("scheduled_date", { ascending: true });
-          postsData = groupPostsData as any;
+              )
+              .in("client_id", clientIds)
+              .order("scheduled_date", { ascending: true });
+            postsData = groupPostsData as any;
+          } else {
+            postsData = [];
+          }
         } else {
           postsData = [];
         }
       } else {
-        postsData = [];
-      }
-    } else {
-      // Comportamento original
-      const { data: singleClientPostsData } = await supabase
-        .from("posts")
-        .select(
-          `
+        // Comportamento original
+        const { data: singleClientPostsData } = await supabase
+          .from("posts")
+          .select(
+            `
           *,
           images:post_images(*),
           change_requests(*)
         `
-        )
-        .eq("client_id", clientData.id)
-        .order("scheduled_date", { ascending: true });
-      postsData = singleClientPostsData as any;
-    }
+          )
+          .eq("client_id", clientData.id)
+          .order("scheduled_date", { ascending: true });
+        postsData = singleClientPostsData as any;
+      }
 
-    if (postsData) {
-      setPosts(postsData as any);
+      if (postsData) {
+        setPosts(postsData as any);
+      }
+      setClient(clientData); // Define o cliente
+    } catch (error) {
+      console.error("Erro ao buscar dados do cliente:", error);
+      setClient(null);
+    } finally {
+      setPageLoading(false); // Finaliza o carregamento da página
     }
   };
 
@@ -261,6 +272,16 @@ export const ClientPreview = () => {
       post.status === "agendado"
   );
 
+  // 1. Estado de carregamento da página
+  if (pageLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+      </div>
+    );
+  }
+
+  // 2. Estado de Cliente não encontrado (após o carregamento)
   if (!client) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -276,6 +297,7 @@ export const ClientPreview = () => {
     );
   }
 
+  // 3. Conteúdo da página (se cliente for encontrado)
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
