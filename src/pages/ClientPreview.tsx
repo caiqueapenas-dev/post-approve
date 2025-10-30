@@ -5,7 +5,6 @@ import {
   Post,
   Client,
   PostImage,
-  ChangeRequest,
 } from "../lib/supabase";
 import { PostCarousel } from "../components/features/PostCarousel";
 import { CalendarView } from "../components/ui/CalendarView";
@@ -17,11 +16,9 @@ import {
   List,
   AlertCircle,
   Clock,
-  ChevronDown,
   User,
   BarChart3,
   ExternalLink,
-  Download,
   Loader2, // Adiciona o ícone de carregamento
   MessageSquareDiff, // Ícone para variações
 } from "lucide-react";
@@ -52,7 +49,6 @@ export const ClientPreview = () => {
   >("visual");
   const [changeMessage, setChangeMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showApproved, setShowApproved] = useState(false);
   // Novos estados para posts agrupados
   const [pendingGroupedPosts, setPendingGroupedPosts] = useState<GroupedPost[]>(
     []

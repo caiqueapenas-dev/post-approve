@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Post, Client } from "../../lib/supabase";
+import { Post } from "../../lib/supabase";
 import { usePosts, useDeletePost } from "../../hooks/usePosts";
 import { useClients } from "../../hooks/useClients";
 import {
@@ -13,7 +13,7 @@ import {
 import { PostEditor } from "./PostEditor";
 import { getStatusBadgeClasses } from "../../lib/utils";
 
-export const PostList = ({ refresh }: { refresh: number }) => {
+export const PostList = () => {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
   const [filter, setFilter] = useState<

@@ -46,9 +46,7 @@ export const useCreateClient = () => {
   });
 };
 
-const updateClient = async (
-  updatedClient: Partial<Client> & { id: string }
-) => {
+const updateClient = async (updatedClient: Partial<Client> & { id: string; avatar?: File | null }) => {
   let avatarUrl = updatedClient.avatar_url;
 
   if (updatedClient.avatar instanceof File) {

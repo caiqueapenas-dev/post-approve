@@ -1,4 +1,4 @@
-import { PostImage, Client, Post, ChangeRequest } from "../lib/supabase";
+import { PostImage, Client, Post } from "../../lib/supabase";
 import {
   Calendar,
   MessageSquare,

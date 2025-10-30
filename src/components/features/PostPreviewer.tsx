@@ -1,4 +1,4 @@
-import { PostImage, PostType, CropFormat } from "../lib/supabase";
+import { PostImage, PostType, CropFormat } from "../../lib/supabase";
 import { PostCarousel } from "./PostCarousel";
 import { ImageData } from "./PostCreator";
 import { isMediaVideo } from "../../lib/utils";

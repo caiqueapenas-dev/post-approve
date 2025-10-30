@@ -1,4 +1,3 @@
-
 import { AuthProvider } from "./contexts/AuthContext";
 import { Router } from "./components/Router";
 
@@ -11,4 +10,3 @@ function App() {
 }
 
 export default App;
-

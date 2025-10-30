@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { PostImage, CropFormat } from "../lib/supabase";
+import { PostImage, CropFormat } from "../../lib/supabase";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { isMediaVideo } from "../../lib/utils";
 

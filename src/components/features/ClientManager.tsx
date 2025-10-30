@@ -91,7 +91,6 @@ export const ClientManager = () => {
       name: editName,
       display_name: editDisplayName || editName, // Default para o nome interno
       avatar: editAvatar,
-      avatar_url: editAvatarPreview,
       report_link_url: editReportLink || null,
       meta_calendar_url: editMetaCalendarLink || null,
       color: editColor,
@@ -237,10 +236,10 @@ export const ClientManager = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={createClientMutation.isLoading}
+                  disabled={createClientMutation.isPending}
                   className="flex-1 px-4 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
-                  {createClientMutation.isLoading ? "Criando..." : "Criar"}
+                  {createClientMutation.isPending ? "Criando..." : "Criar"}
                 </button>
               </div>
             </form>
@@ -449,10 +448,10 @@ export const ClientManager = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={updateClientMutation.isLoading}
+                  disabled={updateClientMutation.isPending}
                   className="flex-1 px-4 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
-                  {updateClientMutation.isLoading
+                  {updateClientMutation.isPending
                     ? "Salvando..."
                     : "Salvar Alterações"}
                 </button>

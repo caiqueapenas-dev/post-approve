@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase, Post, Client, PostType } from "../../lib/supabase";
+import { supabase, Post, Client, PostType, CropFormat } from "../../lib/supabase";
 import { uploadToCloudinary } from "../../lib/cloudinary";
 import { ImageCropper } from "../ui/ImageCropper";
 import {

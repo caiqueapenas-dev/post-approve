@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { CropFormat, PostType } from "../lib/supabase";
+import { CropFormat, PostType } from "../../lib/supabase";
 import { X } from "lucide-react";
 
 type ImageCropperProps = {

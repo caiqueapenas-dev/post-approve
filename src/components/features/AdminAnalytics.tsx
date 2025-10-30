@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import { supabase } from "../../lib/supabase";
-import { getWeekRangeText } from "../../lib/dateUtils";
+import { supabase, Post, Client, PostStatus } from "../../lib/supabase";
+import { formatDateForInput, getTodayRange, getThisWeekRange, getThisMonthRange, getNextMonthRange } from "../../lib/dateUtils";
 import {
   BarChart,
   Loader2,
-  User,
   AlertTriangle,
   CheckCircle,
   TrendingUp,
@@ -140,8 +139,7 @@ export const AdminAnalytics = () => {
       count: postCountMap.get(client.id) || 0,
     }));
 
-    // 5. Calcula posts esperados e status da cota
-    const dataWithQuota = clients.map((client) => {
+    const clientsWithQuota = clients.map((client) => {
       const actualCount = postCountMap.get(client.id) || 0;
       const weeklyQuota = client.weekly_post_quota || 0;
       let expectedPosts = 0;

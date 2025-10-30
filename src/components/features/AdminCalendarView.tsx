@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { supabase, Post } from "../../lib/supabase";
+import { supabase, Post, Client, PostStatus } from "../../lib/supabase";
 import { CalendarView } from "../ui/CalendarView";
 import { PostEditor } from "./PostEditor";
 import { getStatusBadgeClasses } from "../../lib/utils"; // Importa a nova função
+import { ImageIcon, User, Clock, AlertCircle, CheckCircle2, Calendar as CalendarIcon } from 'lucide-react';
 
 export const AdminCalendarView = ({
   showTitle = true,
@@ -21,22 +22,7 @@ export const AdminCalendarView = ({
   const [selectedPostType, setSelectedPostType] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
-  const translateStatus = (status: PostStatus) => {
-    switch (status) {
-      case "pending":
-        return "Pendente";
-      case "change_requested":
-        return "Alteração Solicitada";
-      case "approved":
-        return "Aprovado";
-      case "agendado":
-        return "Agendado";
-      case "published":
-        return "Publicado";
-      default:
-        return status;
-    }
-  };
+
 
   useEffect(() => {
     fetchPosts();
