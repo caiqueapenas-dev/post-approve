@@ -28,28 +28,6 @@ type AgendaViewProps = {
   onApprove: (group: GroupedPost) => void;
   onChangeRequest: (group: GroupedPost) => void;
   onDownload: (image: PostImage) => void;
-  groupBy: "status" | "format";
-};
-
-// Função para formatar data (simplificada para este componente)
-const formatDate = (date: Date) => {
-  const days = [
-    "Domingo",
-    "Segunda",
-    "Terça",
-    "Quarta",
-    "Quinta",
-    "Sexta",
-    "Sábado",
-  ];
-  return {
-    date: date.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      timeZone: "UTC",
-    }),
-    day: days[date.getUTCDay()],
-  };
 };
 
 // Função para obter o status do grupo (copiado de ClientPreview)
@@ -86,17 +64,31 @@ const translatePostType = (type: string) => {
   }
 };
 
-/**
- * Gera um mapa de posts agrupados por dia (YYYY-MM-DD)
- */
+const getStatusBadge = (status: string) => {
+  const { badge, icon } = getStatusBadgeClasses(status);
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${badge}`}
+    >
+      <svg
+        className={`h-2 w-2 ${icon}`}
+        fill="currentColor"
+        viewBox="0 0 8 8"
+      >
+        <circle cx={4} cy={4} r={3} />
+      </svg>
+      {translateStatus(status)}
+    </span>
+  );
+};
+
 const groupPosts = (
   groupedPosts: GroupedPost[],
-  groupBy: "status" | "format"
 ): Map<string, GroupedPost[]> => {
   const map = new Map<string, GroupedPost[]>();
 
   for (const group of groupedPosts) {
-    const key = groupBy === "status" ? group.status : group.posts[0].post_type;
+    const key = group.status;
 
     if (!map.has(key)) {
       map.set(key, []);
@@ -124,7 +116,7 @@ export const AgendaView = ({
   onDownload,
 }: AgendaViewProps) => {
   // 1. Agrupa os posts por dia
-  const postsByGroup = groupPosts(groupedPosts, groupBy);
+  const postsByGroup = groupPosts(groupedPosts);
 
   // 2. Obtém as chaves (dias) e ordena
   const sortedGroups = Array.from(postsByGroup.keys()).sort();
@@ -151,7 +143,7 @@ export const AgendaView = ({
             <div className="flex items-center gap-2 mb-4">
               <Calendar className="w-5 h-5 text-gray-700" />
               <h3 className="text-lg font-bold text-gray-900">
-                {groupBy === "status" ? translateStatus(groupKey) : translatePostType(groupKey)}
+                {translateStatus(groupKey)}
               </h3>
             </div>
             {/* Lista de Posts para este dia */}

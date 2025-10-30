@@ -1,11 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import {
-  supabase,
-  Post,
-  Client,
-  PostImage,
-} from "../lib/supabase";
+import { supabase, Post, Client, PostImage } from "../lib/supabase";
 import { PostCarousel } from "../components/features/PostCarousel";
 import { CalendarView } from "../components/ui/CalendarView";
 import { AgendaView } from "../components/ui/AgendaView"; // Importa a nova AgendaView
@@ -13,11 +8,9 @@ import {
   CheckCircle2,
   MessageSquare,
   Calendar,
-  List,
   AlertCircle,
   Clock,
   User,
-  BarChart3,
   ExternalLink,
   Loader2, // Adiciona o ícone de carregamento
   MessageSquareDiff, // Ícone para variações
@@ -41,7 +34,9 @@ export const ClientPreview = () => {
   const [client, setClient] = useState<Client | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [pageLoading, setPageLoading] = useState(true); // Estado de carregamento da página
-  const [viewOptions, setViewOptions] = useState<{ groupBy: "status" | "format", filter: string }>({ groupBy: "status", filter: "all" });
+  const [viewOptions, setViewOptions] = useState<{
+    viewMode: "calendar" | "agenda";
+  }>({ viewMode: "agenda" });
   const [selectedGroup, setSelectedGroup] = useState<GroupedPost | null>(null); // Renomeado de selectedPost
   const [showChangeRequest, setShowChangeRequest] = useState(false);
   const [changeType, setChangeType] = useState<
@@ -489,29 +484,38 @@ export const ClientPreview = () => {
 
       <div className="max-w-4xl mx-auto px-2 py-6 space-y-6">
         <div className="flex gap-2">
-          <select
-            value={viewOptions.groupBy}
-            onChange={(e) => setViewOptions({ ...viewOptions, groupBy: e.target.value as "status" | "format" })}
-            className="p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900 min-w-[150px]"
-          >
-            <option value="status">Agrupar por Status</option>
-            <option value="format">Agrupar por Formato</option>
-          </select>
-          <select
-            value={viewOptions.filter}
-            onChange={(e) => setViewOptions({ ...viewOptions, filter: e.target.value })}
-            className="p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900 min-w-[150px]"
-          >
-            <option value="all">Todos os Posts</option>
-            <option value="pending">Pendente</option>
-            <option value="change_requested">Alteração Solicitada</option>
-            <option value="approved">Aprovado</option>
-            <option value="agendado">Agendado</option>
-            <option value="published">Publicado</option>
-          </select>
-        </div>
 
-        {viewMode === "calendar" ? (
+
+          <div className="inline-flex rounded-lg shadow-sm">
+            <button
+              type="button"
+              className={`relative inline-flex items-center rounded-l-md border border-gray-300 px-4 py-2 text-sm font-medium focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                viewOptions.viewMode === "agenda"
+                  ? "bg-gray-900 text-white"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+              onClick={() =>
+                setViewOptions({ ...viewOptions, viewMode: "agenda" })
+              }
+            >
+              Agenda
+            </button>
+            <button
+              type="button"
+              className={`relative -ml-px inline-flex items-center rounded-r-md border border-gray-300 px-4 py-2 text-sm font-medium focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                viewOptions.viewMode === "calendar"
+                  ? "bg-gray-900 text-white"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+              onClick={() =>
+                setViewOptions({ ...viewOptions, viewMode: "calendar" })
+              }
+            >
+              Calendário
+            </button>
+          </div>
+        </div>
+        {viewOptions.viewMode === "calendar" ? (
           <div className="bg-white rounded-xl p-6 shadow-sm">
             <CalendarView
               posts={posts} // Passa os posts brutos (o componente agrupa internamente)
@@ -520,9 +524,11 @@ export const ClientPreview = () => {
             />
           </div>
         ) : (
-          // --- NOVO: Renderiza a AgendaView ---
           <AgendaView
-            groupedPosts={[...pendingGroupedPosts, ...approvedGroupedPosts].filter(post => viewOptions.filter === "all" || post.status === viewOptions.filter)}
+            groupedPosts={[
+              ...pendingGroupedPosts,
+              ...approvedGroupedPosts,
+            ]}
             loading={loading}
             onApprove={handleApproveGroup}
             onChangeRequest={(group) => {
@@ -530,7 +536,6 @@ export const ClientPreview = () => {
               setShowChangeRequest(true);
             }}
             onDownload={handleDownload}
-            groupBy={viewOptions.groupBy}
           />
         )}
       </div>
