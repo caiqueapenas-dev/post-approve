@@ -170,7 +170,7 @@ export const AdminDashboard = () => {
           </div>
         )}
         {/* Adiciona a renderização do PostList que estava faltando */}
-        {activeTab === "posts" && <PostList refresh={refreshPosts} />}
+        {activeTab === "posts" && <PostList />}
       </div>
     </div>
   );
