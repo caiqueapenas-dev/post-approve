@@ -261,6 +261,9 @@ export const ClientPreview = () => {
           new Date(a.scheduled_date).getTime() -
           new Date(b.scheduled_date).getTime();
 
+        console.log("Pending grouped posts:", pendingGroups);
+        console.log("Approved grouped posts:", approvedGroups);
+
         setPendingGroupedPosts(pendingGroups.sort(sortByDate));
         setApprovedGroupedPosts(approvedGroups.sort(sortByDate));
       } else {
