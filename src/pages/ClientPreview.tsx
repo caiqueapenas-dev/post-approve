@@ -246,6 +246,7 @@ export const ClientPreview = () => {
 
         // Separa em pendentes e aprovados
         groupedPostsMap.forEach((group) => {
+          console.log("Group status:", group.status);
           if (
             group.status === "pending" ||
             group.status === "change_requested"
