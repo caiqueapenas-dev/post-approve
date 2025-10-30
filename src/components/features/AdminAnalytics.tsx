@@ -131,8 +131,7 @@ export const AdminAnalytics = () => {
       );
     }
 
-    // 4. Mapeia clientes para incluir contagem (importante para mostrar clientes com 0 posts)
-    const clientsWithQuota = clients.map((client) => {
+    const processedData: ProcessedData[] = clients.map((client) => {
       const actualCount = postCountMap.get(client.id) || 0;
       const weeklyQuota = client.weekly_post_quota || 0;
       let expectedPosts = 0;
@@ -199,7 +198,7 @@ export const AdminAnalytics = () => {
     });
 
     // 6. Ordena: clientes que precisam de atenção primeiro, depois por nome
-    return clientsWithQuota.sort((a: ProcessedData, b: ProcessedData) => {
+    return processedData.sort((a: ProcessedData, b: ProcessedData) => {
       if (a.needs_attention && !b.needs_attention) return -1;
       if (!a.needs_attention && b.needs_attention) return 1;
       // Se ambos precisam/não precisam de atenção, ordena por nome
