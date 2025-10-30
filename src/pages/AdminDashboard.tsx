@@ -23,7 +23,7 @@ type DraftData = {
 };
 
 export const AdminDashboard = () => {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const [activeTab, setActiveTab] = useState<
     "dashboard" | "create" | "posts" | "clients" | "calendar"
   >("dashboard");
@@ -101,22 +101,27 @@ export const AdminDashboard = () => {
             <Users className="w-5 h-5" />
             Clientes
           </button>
-          <button
-            onClick={() => setActiveTab("calendar")}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
-              activeTab === "calendar"
-                ? "bg-gray-900 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
-            }`}
-          >
-            <Calendar className="w-5 h-5" />
-            Calendário
-          </button>
+          {user?.user_metadata?.client_name !== "clean saude" && (
+            <button
+              onClick={() => setActiveTab("calendar")}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
+                activeTab === "calendar"
+                  ? "bg-gray-900 text-white"
+                  : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+              }`}
+            >
+              <Calendar className="w-5 h-5" />
+              Calendário
+            </button>
+          )}
         </div>
 
         {activeTab === "dashboard" && <AdminAnalytics />}
         {activeTab === "clients" && <ClientManager />}
-        {activeTab === "calendar" && <AdminCalendarView />}
+        {activeTab === "calendar" &&
+          user?.user_metadata?.client_name !== "clean saude" && (
+            <AdminCalendarView />
+          )}
         {activeTab === "create" && (
           <div
             className={`grid grid-cols-1 lg:gap-8 ${
@@ -151,11 +156,12 @@ export const AdminDashboard = () => {
             </div>
 
             {/* Coluna 2: Calendário */}
-            {showSplitCalendar && (
-              <div className="lg:col-span-1 space-y-8 hidden lg:block">
-                <AdminCalendarView showTitle={false} />
-              </div>
-            )}
+            {showSplitCalendar &&
+              user?.user_metadata?.client_name !== "clean saude" && (
+                <div className="lg:col-span-1 space-y-8 hidden lg:block">
+                  <AdminCalendarView showTitle={false} />
+                </div>
+              )}
 
             {/* Coluna 3: Preview */}
             {showPreviewColumn && (

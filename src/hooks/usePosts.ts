@@ -37,8 +37,8 @@ export const usePosts = (clientId: string, filter: string) => {
   });
 };
 
-const deletePost = async (id: string) => {
-  const { data, error } = await supabase.from("posts").delete().eq("id", id);
+const deletePosts = async (ids: string[]) => {
+  const { data, error } = await supabase.from("posts").delete().in("id", ids);
 
   if (error) {
     throw new Error(error.message);
@@ -47,11 +47,11 @@ const deletePost = async (id: string) => {
   return data;
 };
 
-export const useDeletePost = () => {
+export const useDeletePosts = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: deletePost,
+    mutationFn: deletePosts,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
     },

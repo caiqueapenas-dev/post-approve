@@ -108,10 +108,10 @@ export const PostCarousel = ({
           <img
             src={media.image_url}
             alt="Post"
-            className="w-full h-full object-cover"
-          />
-        )}
-        {showDownloadButton && (
+                    className="w-full h-full object-cover"
+                />
+              )}
+              {showDownloadButton && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -160,10 +160,9 @@ export const PostCarousel = ({
                   src={image.image_url}
                   alt={`Slide ${image.position + 1}`}
                   className="w-full h-full object-cover"
-                />
-              )}
-              {showDownloadButton && (
-                <button
+                          />
+                        )}
+                        {showDownloadButton && (                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onDownload(image);

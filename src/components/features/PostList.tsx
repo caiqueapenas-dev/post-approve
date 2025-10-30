@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Post } from "../../lib/supabase";
-import { usePosts, useDeletePost } from "../../hooks/usePosts";
+import { usePosts, useDeletePosts } from "../../hooks/usePosts";
 import { useClients } from "../../hooks/useClients";
 import {
   Calendar,
@@ -27,7 +27,20 @@ export const PostList = () => {
 
   const { data: posts, isLoading } = usePosts(selectedClientId, filter);
   const { data: clients } = useClients();
-  const deletePostMutation = useDeletePost();
+  const deletePostsMutation = useDeletePosts();
+  const [selectedPostIds, setSelectedPostIds] = useState<string[]>([]);
+
+  const handleSingleDelete = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este post?")) return;
+    await deletePostsMutation.mutateAsync([id]);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPostIds.length === 0) return;
+    if (!confirm(`Tem certeza que deseja excluir ${selectedPostIds.length} posts selecionados?`)) return;
+    await deletePostsMutation.mutateAsync(selectedPostIds);
+    setSelectedPostIds([]); // Clear selection after deletion
+  };
 
   const translateStatus = (
     status:
@@ -71,10 +84,6 @@ export const PostList = () => {
     }
   };
 
-  const deletePost = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir este post?")) return;
-    await deletePostMutation.mutateAsync(id);
-  };
 
   const formatDate = (date: string) => {
     const d = new Date(date);
@@ -123,6 +132,14 @@ export const PostList = () => {
           ))}
         </select>
         <div className="flex gap-2">
+          {selectedPostIds.length > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-red-600 text-white hover:bg-red-700"
+            >
+              Excluir Selecionados ({selectedPostIds.length})
+            </button>
+          )}
           {(
             [
               "all",
@@ -155,10 +172,22 @@ export const PostList = () => {
           return (
             <div
               key={post.id}
-              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative cursor-pointer"
-              onClick={() => setSelectedPost(post)}
+              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative"
             >
-              <div className="flex gap-6">
+              <input
+                type="checkbox"
+                className="absolute top-4 left-4 w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                checked={selectedPostIds.includes(post.id)}
+                onChange={(e) => {
+                  e.stopPropagation(); // Prevent triggering post click
+                  setSelectedPostIds((prev) =>
+                    e.target.checked
+                      ? [...prev, post.id]
+                      : prev.filter((id) => id !== post.id)
+                  );
+                }}
+              />
+              <div className="flex gap-6 cursor-pointer" onClick={() => setSelectedPost(post)}>
                 <div className="flex-shrink-0">
                   {post.images && post.images.length > 0 && (
                     <img
@@ -211,7 +240,7 @@ export const PostList = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          deletePost(post.id);
+                          handleSingleDelete(post.id);
                         }}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="Deletar Post"

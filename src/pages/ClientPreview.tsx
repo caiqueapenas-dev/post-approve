@@ -500,22 +500,24 @@ export const ClientPreview = () => {
             >
               Agenda
             </button>
-            <button
-              type="button"
-              className={`relative -ml-px inline-flex items-center rounded-r-md border border-gray-300 px-4 py-2 text-sm font-medium focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                viewOptions.viewMode === "calendar"
-                  ? "bg-gray-900 text-white"
-                  : "bg-white text-gray-700 hover:bg-gray-50"
-              }`}
-              onClick={() =>
-                setViewOptions({ ...viewOptions, viewMode: "calendar" })
-              }
-            >
-              Calendário
-            </button>
+            {client.name !== "clean saude" && (
+              <button
+                type="button"
+                className={`relative -ml-px inline-flex items-center rounded-r-md border border-gray-300 px-4 py-2 text-sm font-medium focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                  viewOptions.viewMode === "calendar"
+                    ? "bg-gray-900 text-white"
+                    : "bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+                onClick={() =>
+                  setViewOptions({ ...viewOptions, viewMode: "calendar" })
+                }
+              >
+                Calendário
+              </button>
+            )}
           </div>
         </div>
-        {viewOptions.viewMode === "calendar" ? (
+        {viewOptions.viewMode === "calendar" && client.name !== "clean saude" ? (
           <div className="bg-white rounded-xl p-6 shadow-sm">
             <CalendarView
               posts={posts} // Passa os posts brutos (o componente agrupa internamente)
@@ -628,6 +630,32 @@ export const ClientPreview = () => {
                   <h3 className="text-lg font-bold text-gray-900">
                     Detalhes do Post
                   </h3>
+                  {/* Tags de Cliente */}
+                  <div className="flex flex-wrap gap-1">
+                    {selectedGroup.clients.map((client) => (
+                      <span
+                        key={client.id}
+                        className="flex items-center gap-1 px-1 py-0.5 rounded-full text-[0.6rem] font-medium"
+                        style={{
+                          backgroundColor: `${
+                            client.color || "#6b7280"
+                          }33`,
+                          color: client.color || "#6b7280",
+                        }}
+                      >
+                        {client.avatar_url ? (
+                          <img
+                            src={client.avatar_url}
+                            alt={client.name}
+                            className="w-3 h-3 rounded-full object-cover"
+                          />
+                        ) : (
+                          <User className="w-2.5 h-2.5" />
+                        )}
+                        {client.display_name || client.name}
+                      </span>
+                    ))}
+                  </div>
                   <button
                     onClick={() => setSelectedGroup(null)}
                     className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"

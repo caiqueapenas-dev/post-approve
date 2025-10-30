@@ -313,11 +313,11 @@ export const CalendarView = ({
                   {clientGroups.map((group) => (
                     <div
                       key={group.client.id}
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 mb-4"
                     >
                       {/* Tag do Cliente */}
                       <span
-                        className="flex-shrink-0 flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
+                        className="flex-shrink-0 flex items-center gap-1 px-1 py-0.5 rounded-full text-[0.6rem] font-medium"
                         style={{
                           backgroundColor: `${
                             group.client.color || "#6b7280"
@@ -330,10 +330,10 @@ export const CalendarView = ({
                           <img
                             src={group.client.avatar_url}
                             alt={group.client.name}
-                            className="w-4 h-4 rounded-full object-cover"
+                            className="w-3 h-3 rounded-full object-cover"
                           />
                         ) : (
-                          <User className="w-3 h-3" />
+                          <User className="w-2.5 h-2.5" />
                         )}
                         <span className="hidden sm:inline">
                           {group.client.display_name || group.client.name}

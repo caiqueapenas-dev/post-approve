@@ -161,7 +161,7 @@ export const AgendaView = ({
                 return (
                   <div
                     key={group.id}
-                    className="border border-gray-100 rounded-lg overflow-hidden"
+                    className="border border-gray-100 rounded-lg overflow-hidden mb-4"
                   >
                     {group.images && group.images.length > 0 && (
                       <PostCarousel
@@ -182,11 +182,11 @@ export const AgendaView = ({
                           </div>
                         </div>
                         {/* Tags de Cliente */}
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1">
                           {group.clients.map((client) => (
                             <span
                               key={client.id}
-                              className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
+                              className="flex items-center gap-1 px-1 py-0.5 rounded-full text-[0.6rem] font-medium"
                               style={{
                                 backgroundColor: `${
                                   client.color || "#6b7280"
@@ -198,10 +198,10 @@ export const AgendaView = ({
                                 <img
                                   src={client.avatar_url}
                                   alt={client.name}
-                                  className="w-4 h-4 rounded-full object-cover"
+                                  className="w-3 h-3 rounded-full object-cover"
                                 />
                               ) : (
-                                <User className="w-3 h-3" />
+                                <User className="w-2.5 h-2.5" />
                               )}
                               {client.display_name || client.name}
                             </span>
