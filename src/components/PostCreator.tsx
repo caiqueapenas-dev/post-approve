@@ -19,6 +19,7 @@ import {
   PanelRight,
   Video,
   CheckSquare,
+  Check, // Adiciona o ícone de Check
 } from "lucide-react";
 // Removido import duplicado de PostImage e Post
 import { isMediaVideo } from "../lib/utils";
@@ -74,7 +75,7 @@ export const PostCreator = ({
   // Adicionado tipo das props
   // --- Estados do Componente ---
   const [clients, setClients] = useState<Client[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]); // Alterado para array
   const [postType, setPostType] = useState<PostType>("feed");
 
   const getDefaultScheduledDate = () => {
@@ -104,8 +105,13 @@ export const PostCreator = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [showApplyAll, setShowApplyAll] = useState(false);
   const [clientPosts, setClientPosts] = useState<Post[]>([]);
-  const [conflictingPosts, setConflictingPosts] = useState<Post[]>([]);
-  const [latestPostDate, setLatestPostDate] = useState<Date | null>(null);
+  // Estados para multi-cliente
+  const [conflictingPosts, setConflictingPosts] = useState<Map<string, Post[]>>(
+    new Map()
+  );
+  const [latestPostDate, setLatestPostDate] = useState<Map<string, Date>>(
+    new Map()
+  );
 
   // --- Funções Auxiliares ---
 
@@ -350,7 +356,7 @@ export const PostCreator = ({
   const handleSubmit = async (e: React.FormEvent) => {
     // handleSubmit definido aqui
     e.preventDefault();
-    if (!selectedClientId || images.length === 0) return; // selectedClientId e images definidos
+    if (selectedClientIds.length === 0 || images.length === 0) return; // Alterado para selectedClientIds
 
     setSubmitLoading(true); // setSubmitLoading definido
     setUploadProgress(0); // setUploadProgress definido
@@ -377,12 +383,15 @@ export const PostCreator = ({
           }
 
           validImageCount++; // Incrementa contador de imagens válidas
-          postCreations.push({
-            client_id: selectedClientId, // selectedClientId definido
-            post_type: postType, // postType definido
-            scheduled_date: `${image.scheduledDate}:00Z`,
-            caption: postCaption, // Usa variável postCaption
-            status: "pending",
+          // Adiciona um post para CADA cliente selecionado
+          selectedClientIds.forEach((clientId) => {
+            postCreations.push({
+              client_id: clientId, // Usa o clientId do loop
+              post_type: postType, // postType definido
+              scheduled_date: `${image.scheduledDate}:00Z`,
+              caption: postCaption, // Usa variável postCaption
+              status: "pending",
+            });
           });
         }
 
@@ -397,8 +406,11 @@ export const PostCreator = ({
           .select("id");
 
         if (postError) throw postError;
-        if (!newPosts || newPosts.length !== validImageCount) {
-          // Compara com validImageCount
+        // Ajusta a verificação para o número total de posts criados
+        if (
+          !newPosts ||
+          newPosts.length !== validImageCount * selectedClientIds.length
+        ) {
           throw new Error(
             "Falha ao criar entradas de post (contagem ajustada)."
           );
@@ -406,78 +418,120 @@ export const PostCreator = ({
 
         setUploadProgress(5); // setUploadProgress definido
 
+        // O upload das imagens SÓ é feito UMA VEZ
+        const uploadedImages: {
+          [tempId: string]: { url: string; publicId: string };
+        } = {};
         const progressChunk = 95 / validImageCount; // Usa validImageCount
+
+        let imageUploadIndex = 0;
+        for (const image of images) {
+          if (postType === "feed" && isMediaVideo(image.preview)) {
+            continue; // Pula vídeo no Feed Bulk
+          }
+          const { url, publicId } = await uploadToCloudinary(image.file);
+          uploadedImages[image.tempId] = { url, publicId };
+          setUploadProgress(
+            (prev: number | null) => (prev || 5) + progressChunk
+          );
+          imageUploadIndex++;
+        }
+
+        // Associa as imagens aos posts corretos
+        // newPosts contém todos os posts criados (ex: 3 clientes, 2 imgs = 6 posts)
+        // Precisamos agrupar os posts por cliente
+        const imageInsertions: any[] = [];
         let postIndex = 0;
         for (let i = 0; i < images.length; i++) {
-          // images definido
-          const image = images[i]; // images definido
+          const image = images[i];
           if (postType === "feed" && isMediaVideo(image.preview)) {
-            // postType definido
             continue;
           }
-
-          const newPostId = newPosts[postIndex].id;
-          postIndex++;
-
-          const { url, publicId } = await uploadToCloudinary(image.file);
-
-          await supabase.from("post_images").insert([
-            {
+          const uploadedImg = uploadedImages[image.tempId];
+          for (let j = 0; j < selectedClientIds.length; j++) {
+            const newPostId = newPosts[postIndex].id;
+            imageInsertions.push({
               post_id: newPostId,
-              image_url: url,
-              image_public_id: publicId,
+              image_url: uploadedImg.url,
+              image_public_id: uploadedImg.publicId,
               crop_format: image.cropFormat,
-              position: 0,
-            },
-          ]);
+              position: 0, // Em bulk, é sempre posição 0
+            });
+            postIndex++;
+          }
+        }
 
-          setUploadProgress(
-            (prev: number | null) => (prev || 5) + progressChunk
-          ); // Tipo explícito
+        if (imageInsertions.length > 0) {
+          await supabase.from("post_images").insert(imageInsertions);
         }
       } else {
-        // Lógica Single/Carousel
-        const { data: post, error: postError } = await supabase
+        // Lógica Single/Carousel (agora Multi-Cliente)
+        const postCreations: Omit<Post, "id" | "created_at" | "updated_at">[] =
+          [];
+        selectedClientIds.forEach((clientId) => {
+          postCreations.push({
+            client_id: clientId, // Usa o clientId do loop
+            post_type: postType, // postType definido
+            scheduled_date: `${scheduledDate}:00Z`, // scheduledDate definido
+            caption, // caption definido
+            status: "pending",
+          });
+        });
+
+        const { data: newPosts, error: postError } = await supabase
           .from("posts")
-          .insert([
-            {
-              client_id: selectedClientId, // selectedClientId definido
-              post_type: postType, // postType definido
-              scheduled_date: `${scheduledDate}:00Z`, // scheduledDate definido
-              caption, // caption definido
-              status: "pending",
-            },
-          ])
-          .select()
-          .single();
+          .insert(postCreations)
+          .select("id");
 
         if (postError) throw postError;
+        if (!newPosts || newPosts.length !== selectedClientIds.length) {
+          throw new Error("Falha ao criar posts para todos os clientes.");
+        }
+
         setUploadProgress(5); // setUploadProgress definido
 
+        // O upload das imagens só precisa acontecer UMA VEZ
+        const uploadedImages: {
+          url: string;
+          publicId: string;
+          cropFormat: CropFormat;
+        }[] = [];
+        const progressChunkPerImage = 95 / images.length;
+
         for (let i = 0; i < images.length; i++) {
-          // images definido
-          const image = images[i]; // images definido
+          const image = images[i];
           const { url, publicId } = await uploadToCloudinary(image.file);
-
-          await supabase.from("post_images").insert([
-            {
-              post_id: post.id,
-              image_url: url,
-              image_public_id: publicId,
-              crop_format: image.cropFormat,
-              position: i,
-            },
-          ]);
-
-          const progressChunk = 95 / images.length; // images definido
+          uploadedImages.push({
+            url,
+            publicId,
+            cropFormat: image.cropFormat,
+          });
           setUploadProgress(
-            (prev: number | null) => (prev || 5) + progressChunk
-          ); // Tipo explícito
+            (prev: number | null) => (prev || 5) + progressChunkPerImage
+          );
+        }
+
+        // Agora, associe as imagens (já upadas) a CADA post criado
+        const imageInsertions: any[] = [];
+        newPosts.forEach((post) => {
+          uploadedImages.forEach((img, index) => {
+            imageInsertions.push({
+              post_id: post.id,
+              image_url: img.url,
+              image_public_id: img.publicId,
+              crop_format: img.cropFormat,
+              position: index,
+            });
+          });
+        });
+
+        if (imageInsertions.length > 0) {
+          await supabase.from("post_images").insert(imageInsertions);
         }
       }
 
       await new Promise((resolve) => setTimeout(resolve, 300));
-      setSelectedClientId(""); // setSelectedClientId definido
+      setSelectedClientIds([]); // Limpa o array de clientes
       setPostType("feed"); // setPostType definido
       setScheduledDate(getDefaultScheduledDate()); // setScheduledDate, getDefaultScheduledDate definidos
       setCaption(""); // setCaption definido
@@ -510,37 +564,61 @@ export const PostCreator = ({
 
   useEffect(() => {
     const fetchClientPosts = async () => {
-      if (!selectedClientId) {
+      if (selectedClientIds.length === 0) {
         setClientPosts([]);
-        setLatestPostDate(null);
+        setLatestPostDate(new Map());
         return;
       }
       const { data } = await supabase
         .from("posts")
-        .select("id, scheduled_date")
-        .eq("client_id", selectedClientId);
+        .select("*") // Corrigido para selecionar todos os campos
+        .in("client_id", selectedClientIds); // Usa .in()
 
       if (data) {
         setClientPosts(data as Post[]);
-        if (data.length > 0) {
-          const latestDate = data.reduce((latest, post) => {
-            const postDate = new Date(post.scheduled_date);
-            return postDate > latest ? postDate : latest;
-          }, new Date(0));
-          setLatestPostDate(latestDate);
-        } else {
-          setLatestPostDate(null);
+
+        // Process data per client
+        const latestDateMap = new Map<string, Date>();
+        const postsByClient = new Map<string, Post[]>();
+
+        // Initialize maps
+        for (const id of selectedClientIds) {
+          postsByClient.set(id, []);
         }
+
+        // Populate maps
+        for (const post of data) {
+          // Assegura que post.client_id não é nulo antes de usar
+          if (post.client_id) {
+            postsByClient.get(post.client_id)?.push(post);
+          }
+        }
+
+        // Find latest date for each client
+        postsByClient.forEach((posts, clientId) => {
+          if (posts.length > 0) {
+            const latestDate = posts.reduce((latest, post) => {
+              const postDate = new Date(post.scheduled_date);
+              return postDate > latest ? postDate : latest;
+            }, new Date(0));
+            latestDateMap.set(clientId, latestDate);
+          }
+        });
+        setLatestPostDate(latestDateMap);
       } else {
-        setLatestPostDate(null);
+        setLatestPostDate(new Map());
       }
     };
     fetchClientPosts();
-  }, [selectedClientId]);
+  }, [selectedClientIds]); // Dependency changed
 
   useEffect(() => {
-    if (!scheduledDate || clientPosts.length === 0) {
-      setConflictingPosts([]);
+    if (
+      !scheduledDate ||
+      clientPosts.length === 0 ||
+      selectedClientIds.length === 0
+    ) {
+      setConflictingPosts(new Map());
       return;
     }
     try {
@@ -549,19 +627,29 @@ export const PostCreator = ({
       const selectedMonth = selected.getUTCMonth();
       const selectedYear = selected.getUTCFullYear();
 
-      const conflicts = clientPosts.filter((post) => {
+      const conflictsMap = new Map<string, Post[]>();
+
+      for (const post of clientPosts) {
+        // Check if this post is on the same day
         const postDate = new Date(post.scheduled_date);
-        return (
+        const isConflict =
           postDate.getUTCDate() === selectedDay &&
           postDate.getUTCMonth() === selectedMonth &&
-          postDate.getUTCFullYear() === selectedYear
-        );
-      });
-      setConflictingPosts(conflicts);
+          postDate.getUTCFullYear() === selectedYear;
+
+        // Assegura que post.client_id não é nulo
+        if (isConflict && post.client_id) {
+          if (!conflictsMap.has(post.client_id)) {
+            conflictsMap.set(post.client_id, []);
+          }
+          conflictsMap.get(post.client_id)?.push(post);
+        }
+      }
+      setConflictingPosts(conflictsMap);
     } catch (e) {
-      setConflictingPosts([]);
+      setConflictingPosts(new Map());
     }
-  }, [scheduledDate, clientPosts]);
+  }, [scheduledDate, clientPosts, selectedClientIds]); // Dependencies changed
 
   useEffect(() => {
     if (isBulkMode) {
@@ -579,7 +667,11 @@ export const PostCreator = ({
   const maxImages = postType === "carousel" && !isBulkMode ? 10 : 1;
   const canAddMore = isBulkMode ? true : images.length < maxImages; // canAddMore definido
 
-  const selectedClient = clients.find((c: Client) => c.id === selectedClientId); // Tipo explícito 'c', clients definido
+  const selectedClients = clients.filter(
+    (
+      c: Client // Renomeado para selectedClients (plural)
+    ) => selectedClientIds.includes(c.id)
+  );
 
   // --- JSX ---
   return (
@@ -629,7 +721,7 @@ export const PostCreator = ({
         {/* Cliente */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Cliente
+            Cliente(s)
           </label>
           <div className="relative">
             <button
@@ -638,23 +730,33 @@ export const PostCreator = ({
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none flex items-center justify-between text-left"
             >
               <span className="flex items-center gap-3">
-                {selectedClient ? ( // selectedClient definido
-                  <>
-                    {selectedClient.avatar_url ? (
-                      <img
-                        src={selectedClient.avatar_url}
-                        alt={selectedClient.name}
-                        className="w-6 h-6 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
-                        <User className="w-4 h-4 text-gray-400" />
-                      </div>
-                    )}
-                    <span className="text-gray-900">{selectedClient.name}</span>
-                  </>
+                {selectedClients.length > 0 ? ( // Usando selectedClients
+                  selectedClients.length === 1 ? (
+                    <>
+                      {selectedClients[0].avatar_url ? (
+                        <img
+                          src={selectedClients[0].avatar_url}
+                          alt={selectedClients[0].name}
+                          className="w-6 h-6 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
+                          <User className="w-4 h-4 text-gray-400" />
+                        </div>
+                      )}
+                      <span className="text-gray-900">
+                        {selectedClients[0].name}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-gray-900">
+                      {selectedClients.length} clientes selecionados
+                    </span>
+                  )
                 ) : (
-                  <span className="text-gray-500">Selecione um cliente</span>
+                  <span className="text-gray-500">
+                    Selecione o(s) cliente(s)
+                  </span>
                 )}
               </span>
               <ChevronsUpDown className="w-4 h-4 text-gray-400" />
@@ -665,30 +767,44 @@ export const PostCreator = ({
                 {clients.map(
                   (
                     client // clients definido
-                  ) => (
-                    <button
-                      key={client.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedClientId(client.id); // setSelectedClientId definido
-                        setIsClientDropdownOpen(false); // setIsClientDropdownOpen definido
-                      }}
-                      className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-100 transition-colors"
-                    >
-                      {client.avatar_url ? (
-                        <img
-                          src={client.avatar_url}
-                          alt={client.name}
-                          className="w-6 h-6 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
-                          <User className="w-4 h-4 text-gray-400" />
-                        </div>
-                      )}
-                      <span className="text-gray-900">{client.name}</span>
-                    </button>
-                  )
+                  ) => {
+                    const isSelected = selectedClientIds.includes(client.id);
+                    return (
+                      <button
+                        key={client.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedClientIds((prevIds) =>
+                            isSelected
+                              ? prevIds.filter((id) => id !== client.id)
+                              : [...prevIds, client.id]
+                          );
+                          // Não fecha o dropdown ao selecionar: setIsClientDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-100 transition-colors ${
+                          isSelected ? "bg-gray-100" : ""
+                        }`}
+                      >
+                        <span className="flex items-center gap-3">
+                          {client.avatar_url ? (
+                            <img
+                              src={client.avatar_url}
+                              alt={client.name}
+                              className="w-6 h-6 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
+                              <User className="w-4 h-4 text-gray-400" />
+                            </div>
+                          )}
+                          <span className="text-gray-900">{client.name}</span>
+                        </span>
+                        {isSelected && (
+                          <Check className="w-5 h-5 text-gray-900" />
+                        )}
+                      </button>
+                    );
+                  }
                 )}
               </div>
             )}
@@ -795,44 +911,63 @@ export const PostCreator = ({
                 required
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none text-gray-900"
               />
-              {latestPostDate && ( // latestPostDate definido
-                <div className="mt-2 text-sm text-gray-600">
-                  Último post agendado:{" "}
-                  <span className="font-medium text-gray-900">
-                    {new Date(latestPostDate).toLocaleDateString("pt-BR", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      timeZone: "UTC",
-                    })}
-                  </span>
-                </div>
-              )}
-              {conflictingPosts.length > 0 && ( // conflictingPosts definido
-                <div className="mt-2 flex items-start gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded-lg">
-                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm">
-                    <span className="font-medium">
-                      Este cliente já tem {conflictingPosts.length} post(s)
-                      neste dia:
-                    </span>
-                    <ul className="list-disc list-inside mt-1">
-                      {conflictingPosts.map((post) => (
-                        <li key={post.id}>
-                          {new Date(post.scheduled_date).toLocaleTimeString(
-                            "pt-BR",
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              timeZone: "UTC",
-                            }
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+              {/* Avisos de Último Post e Conflitos (Multi-Cliente) */}
+              {selectedClients.length > 0 && (
+                <div className="mt-2 space-y-2">
+                  {selectedClients.map((client) => {
+                    const lastPost = latestPostDate.get(client.id);
+                    const conflicts = conflictingPosts.get(client.id);
+
+                    return (
+                      <div
+                        key={client.id}
+                        className="text-sm p-3 rounded-lg border"
+                        style={{
+                          backgroundColor: `${client.color || "#9ca3af"}1A`, // Fundo com 10% opacidade
+                          borderColor: client.color || "#9ca3af",
+                        }}
+                      >
+                        <p className="font-medium mb-1">{client.name}</p>
+                        {lastPost && (
+                          <div className="text-xs">
+                            Último post:{" "}
+                            <span className="font-medium">
+                              {new Date(lastPost).toLocaleDateString("pt-BR", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                timeZone: "UTC",
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        {conflicts && conflicts.length > 0 && (
+                          <div className="mt-1 flex items-start gap-1 text-yellow-800">
+                            <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                            <div className="text-xs">
+                              <span className="font-medium">
+                                {conflicts.length} conflito(s) neste dia:
+                              </span>
+                              <ul className="list-disc list-inside">
+                                {conflicts.map((post) => (
+                                  <li key={post.id}>
+                                    {new Date(
+                                      post.scheduled_date
+                                    ).toLocaleTimeString("pt-BR", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      timeZone: "UTC",
+                                    })}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1096,7 +1231,7 @@ export const PostCreator = ({
                 submitLoading || // submitLoading definido
                 compressLoading || // compressLoading definido
                 images.length === 0 || // images definido
-                !selectedClientId // selectedClientId definido
+                selectedClientIds.length === 0 // Alterado para selectedClientIds
               }
               className="flex-1 bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
@@ -1109,9 +1244,9 @@ export const PostCreator = ({
                     images.filter(
                       (img) =>
                         !(postType === "feed" && isMediaVideo(img.preview))
-                    ).length
+                    ).length * selectedClientIds.length // Total de posts
                   } Post(s)` // Conta apenas válidos
-                : "Criar Post"}
+                : `Criar Post(s) (${selectedClientIds.length})`}
             </button>
           </div>
         )}
