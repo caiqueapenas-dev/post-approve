@@ -16,8 +16,21 @@ import {
   ExternalLink,
   Download,
   Loader2, // Adiciona o ícone de carregamento
+  MessageSquareDiff, // Ícone para variações
 } from "lucide-react";
 import { downloadMedia, getStatusBadgeClasses } from "../lib/utils"; // Importa a nova função
+
+// Novo tipo para agrupar posts
+type GroupedPost = {
+  id: string; // Chave única (date + media)
+  posts: Post[]; // Array de posts originais (ex: [Post Rio Real, Post Esplanada])
+  clients: Client[]; // Clientes associados
+  baseCaption: string; // A primeira legenda encontrada
+  captionVariations: Map<string, string[]>; // Map<Legenda, Nomes dos Clientes[]>
+  status: string; // Status (prioriza 'change_requested' ou 'pending')
+  images: PostImage[];
+  scheduled_date: string;
+};
 
 export const ClientPreview = () => {
   const { linkId } = useParams();
@@ -25,7 +38,7 @@ export const ClientPreview = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [pageLoading, setPageLoading] = useState(true); // Estado de carregamento da página
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<GroupedPost | null>(null); // Renomeado de selectedPost
   const [showChangeRequest, setShowChangeRequest] = useState(false);
   const [changeType, setChangeType] = useState<
     "visual" | "date" | "caption" | "other"
@@ -33,7 +46,14 @@ export const ClientPreview = () => {
   const [changeMessage, setChangeMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [showApproved, setShowApproved] = useState(false);
-  const [selectedDatePosts, setSelectedDatePosts] = useState<Post[]>([]);
+  // Novos estados para posts agrupados
+  const [pendingGroupedPosts, setPendingGroupedPosts] = useState<GroupedPost[]>(
+    []
+  );
+  const [approvedGroupedPosts, setApprovedGroupedPosts] = useState<
+    GroupedPost[]
+  >([]);
+  const [selectedDatePosts, setSelectedDatePosts] = useState<Post[]>([]); // Mantido para o modal do calendário
   const [showDateModal, setShowDateModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
 
@@ -47,7 +67,7 @@ export const ClientPreview = () => {
   }, [linkId]);
   // Bloqueia a rolagem do body quando um modal está aberto
   useEffect(() => {
-    const isModalOpen = !!selectedPost || showDateModal || showLeaveModal;
+    const isModalOpen = !!selectedGroup || showDateModal || showLeaveModal;
 
     if (isModalOpen) {
       document.body.classList.add("overflow-hidden");
@@ -55,11 +75,11 @@ export const ClientPreview = () => {
       document.body.classList.remove("overflow-hidden");
     }
 
+    // Cleanup: Remove a classe ao desmontar o componente
     return () => {
       document.body.classList.remove("overflow-hidden");
     };
-  }, [selectedPost, showDateModal, showLeaveModal]); // <-- Esta linha estava faltando
-
+  }, [selectedGroup, showDateModal, showLeaveModal]);
   const fetchClientData = async () => {
     try {
       const { data: clientData } = await supabase
@@ -137,9 +157,101 @@ export const ClientPreview = () => {
         postsData = singleClientPostsData as any;
       }
 
+      // Processa e agrupa os posts
+      const groupedPostsMap = new Map<string, GroupedPost>();
+      const pendingGroups: GroupedPost[] = [];
+      const approvedGroups: GroupedPost[] = [];
+
       if (postsData) {
+        // Mantém os posts individuais para o modal do calendário
         setPosts(postsData as any);
+
+        for (const post of postsData as any) {
+          if (!post.images || post.images.length === 0) continue; // Pula posts sem mídia
+
+          // Garante que as imagens estão ordenadas pela posição
+          const sortedImages = [...post.images].sort(
+            (a, b) => a.position - b.position
+          );
+
+          // Chave = Data + URL da primeira imagem
+          const key = `${post.scheduled_date}_${sortedImages[0].image_url}`;
+          const clientName =
+            post.client?.display_name || post.client?.name || "Cliente";
+          const caption = post.caption || "";
+
+          if (groupedPostsMap.has(key)) {
+            // --- Adiciona a um grupo existente ---
+            const group = groupedPostsMap.get(key)!;
+            group.posts.push(post);
+
+            if (
+              post.client &&
+              !group.clients.some((c) => c.id === post.client.id)
+            ) {
+              group.clients.push(post.client);
+            }
+
+            // Atualiza o status (prioriza pendente/alteração)
+            if (
+              post.status === "change_requested" ||
+              (post.status === "pending" && group.status !== "change_requested")
+            ) {
+              group.status = post.status;
+            }
+
+            // Adiciona variação de legenda
+            if (group.captionVariations.has(caption)) {
+              group.captionVariations.get(caption)!.push(clientName);
+            } else {
+              group.captionVariations.set(caption, [clientName]);
+            }
+          } else {
+            // --- Cria um novo grupo ---
+            if (!post.client) continue; // Precisa de um cliente para o grupo
+
+            const variations = new Map<string, string[]>();
+            variations.set(caption, [clientName]);
+
+            const newGroup: GroupedPost = {
+              id: key,
+              posts: [post],
+              clients: [post.client],
+              baseCaption: caption,
+              captionVariations: variations,
+              status: post.status,
+              images: sortedImages, // Usa as imagens ordenadas
+              scheduled_date: post.scheduled_date,
+            };
+            groupedPostsMap.set(key, newGroup);
+          }
+        }
+
+        // Separa em pendentes e aprovados
+        groupedPostsMap.forEach((group) => {
+          if (
+            group.status === "pending" ||
+            group.status === "change_requested"
+          ) {
+            pendingGroups.push(group);
+          } else {
+            approvedGroups.push(group);
+          }
+        });
+
+        // Ordena por data
+        const sortByDate = (a: GroupedPost, b: GroupedPost) =>
+          new Date(a.scheduled_date).getTime() -
+          new Date(b.scheduled_date).getTime();
+
+        setPendingGroupedPosts(pendingGroups.sort(sortByDate));
+        setApprovedGroupedPosts(approvedGroups.sort(sortByDate));
+      } else {
+        setPosts([]);
+        setPendingGroupedPosts([]);
+        setApprovedGroupedPosts([]);
       }
+
       setClient(clientData); // Define o cliente
     } catch (error) {
       console.error("Erro ao buscar dados do cliente:", error);
@@ -149,6 +261,18 @@ export const ClientPreview = () => {
     }
   };
 
+  // Helper: Encontra e abre o modal de grupo a partir de um post individual (usado pelo calendário)
+  const openGroupModalFromPost = (post: Post) => {
+    const allGroups = [...pendingGroupedPosts, ...approvedGroupedPosts];
+    const parentGroup = allGroups.find((group) =>
+      group.posts.some((p) => p.id === post.id)
+    );
+    if (parentGroup) {
+      setSelectedGroup(parentGroup);
+    }
+  };
+
+  // Aprova um ÚNICO post (usado pelo modal do calendário)
   const handleApprove = async (postId: string) => {
     setLoading(true);
     await supabase
@@ -157,7 +281,23 @@ export const ClientPreview = () => {
       .eq("id", postId);
 
     await fetchClientData();
-    setSelectedPost(null);
+    setSelectedGroup(null); // Limpa o grupo
+    setShowDateModal(false); // Fecha o modal de data
+    setLoading(false);
+  };
+
+  // Aprova TODOS os posts dentro de um grupo
+  const handleApproveGroup = async (group: GroupedPost) => {
+    setLoading(true);
+    const postIds = group.posts.map((p) => p.id);
+
+    await supabase
+      .from("posts")
+      .update({ status: "approved" })
+      .in("id", postIds);
+
+    await fetchClientData();
+    setSelectedGroup(null); // Limpa o grupo selecionado
     setShowDateModal(false); // Fecha o modal de data se estiver aberto
     setLoading(false);
   };
@@ -167,29 +307,34 @@ export const ClientPreview = () => {
     setShowDateModal(true);
   };
 
+  // Solicita alteração para TODOS os posts dentro de um grupo
   const handleChangeRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPost) return;
+    if (!selectedGroup) return; // Usa selectedGroup
 
     setLoading(true);
 
-    await supabase.from("change_requests").insert([
-      {
-        post_id: selectedPost.id,
-        request_type: changeType,
-        message: changeMessage,
-      },
-    ]);
+    const postIds = selectedGroup.posts.map((p) => p.id);
 
+    // Cria uma solicitação de alteração para CADA post (necessário pela FK)
+    const changeRequests = postIds.map((id) => ({
+      post_id: id,
+      request_type: changeType,
+      message: changeMessage,
+    }));
+
+    await supabase.from("change_requests").insert(changeRequests);
+
+    // Atualiza o status de TODOS os posts no grupo
     await supabase
       .from("posts")
       .update({ status: "change_requested" })
-      .eq("id", selectedPost.id);
+      .in("id", postIds);
 
     setChangeMessage("");
     setShowChangeRequest(false);
     await fetchClientData();
-    setSelectedPost(null);
+    setSelectedGroup(null); // Limpa o grupo selecionado
     setShowDateModal(false); // Fecha o modal de data se estiver aberto
     setLoading(false);
   };
@@ -261,16 +406,6 @@ export const ClientPreview = () => {
       </span>
     );
   };
-
-  const pendingPosts = posts.filter(
-    (post) => post.status === "pending" || post.status === "change_requested"
-  );
-  const approvedPosts = posts.filter(
-    (post) =>
-      post.status === "approved" ||
-      post.status === "published" ||
-      post.status === "agendado"
-  );
 
   // 1. Estado de carregamento da página
   if (pageLoading) {
@@ -366,22 +501,22 @@ export const ClientPreview = () => {
           <div className="bg-white rounded-xl p-6 shadow-sm">
             <CalendarView
               posts={posts}
-              onPostClick={setSelectedPost}
+              onPostClick={openGroupModalFromPost}
               onDateClick={handleDateClick}
             />
           </div>
         ) : (
           <div className="space-y-4">
-            {pendingPosts.map((post) => {
-              const dateInfo = formatDate(post.scheduled_date);
+            {pendingGroupedPosts.map((group) => {
+              const dateInfo = formatDate(group.scheduled_date);
               return (
                 <div
-                  key={post.id}
+                  key={group.id}
                   className="bg-white rounded-xl shadow-sm overflow-hidden"
                 >
-                  {post.images && post.images.length > 0 && (
+                  {group.images && group.images.length > 0 && (
                     <PostCarousel
-                      images={post.images}
+                      images={group.images}
                       showDownloadButton={true}
                       onDownload={handleDownload}
                     />
@@ -397,26 +532,79 @@ export const ClientPreview = () => {
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          {getStatusBadge(post.status)}
+                          {getStatusBadge(group.status)}
                           <span className="text-sm text-gray-600">
-                            {translatePostType(post.post_type)}
+                            {translatePostType(group.posts[0].post_type)}
                           </span>
                         </div>
                       </div>
+                      {/* --- NOVO: Client Tags --- */}
+                      <div className="flex flex-wrap gap-2">
+                        {group.clients.map((client) => (
+                          <span
+                            key={client.id}
+                            className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
+                            style={{
+                              backgroundColor: `${client.color || "#6b7280"}33`, // 20% opacity
+                              color: client.color || "#6b7280",
+                            }}
+                          >
+                            {client.avatar_url ? (
+                              <img
+                                src={client.avatar_url}
+                                alt={client.name}
+                                className="w-4 h-4 rounded-full object-cover"
+                              />
+                            ) : (
+                              <User className="w-3 h-3" />
+                            )}
+                            {client.display_name || client.name}
+                          </span>
+                        ))}
+                      </div>
                     </div>
 
-                    {post.caption && (
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                          {post.caption}
-                        </p>
-                      </div>
-                    )}
+                    {/* --- ALTERADO: Legenda Base e Variações --- */}
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {group.baseCaption || (
+                          <span className="italic">Sem legenda.</span>
+                        )}
+                      </p>
+                      {group.captionVariations.size > 1 && (
+                        <div className="border-t border-gray-200 pt-3">
+                          <h4 className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1.5">
+                            <MessageSquareDiff className="w-4 h-4" />
+                            Variações de Legenda:
+                          </h4>
+                          <div className="space-y-2">
+                            {Array.from(group.captionVariations.entries())
+                              .filter(
+                                ([caption]) => caption !== group.baseCaption
+                              ) // Mostra apenas as legendas *diferentes*
+                              .map(([caption, clients], idx) => (
+                                <div
+                                  key={idx}
+                                  className="text-sm p-3 bg-white border border-gray-200 rounded-md"
+                                >
+                                  <p className="whitespace-pre-wrap text-gray-700">
+                                    {caption}
+                                  </p>
+                                  <p className="text-xs font-medium text-gray-500 mt-1.5">
+                                    Para: {clients.join(", ")}
+                                  </p>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
-                    {post.status === "pending" && (
+                    {(group.status === "pending" ||
+                      group.status === "change_requested") && (
                       <div className="flex gap-3">
                         <button
-                          onClick={() => handleApprove(post.id)}
+                          onClick={() => handleApproveGroup(group)}
                           disabled={loading}
                           className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white px-2 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
                         >
@@ -425,7 +613,7 @@ export const ClientPreview = () => {
                         </button>
                         <button
                           onClick={() => {
-                            setSelectedPost(post);
+                            setSelectedGroup(group);
                             setShowChangeRequest(true);
                           }}
                           className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 rounded-lg font-medium hover:bg-gray-800 transition-colors"
@@ -436,8 +624,9 @@ export const ClientPreview = () => {
                       </div>
                     )}
 
-                    {post.change_requests &&
-                      post.change_requests.length > 0 && (
+                    {group.status === "change_requested" &&
+                      group.posts[0].change_requests &&
+                      group.posts[0].change_requests.length > 0 && (
                         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                           <div className="flex items-start gap-2">
                             <MessageSquare className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
@@ -447,8 +636,8 @@ export const ClientPreview = () => {
                               </p>
                               <p className="text-sm text-orange-700">
                                 {
-                                  post.change_requests[
-                                    post.change_requests.length - 1
+                                  group.posts[0].change_requests[
+                                    group.posts[0].change_requests.length - 1
                                   ].message
                                 }
                               </p>
@@ -461,26 +650,28 @@ export const ClientPreview = () => {
               );
             })}
 
-            {pendingPosts.length === 0 && posts.length === 0 && (
-              <div className="bg-white rounded-xl p-12 text-center">
-                <p className="text-gray-600">Nenhum post agendado ainda.</p>
-              </div>
-            )}
+            {pendingGroupedPosts.length === 0 &&
+              approvedGroupedPosts.length === 0 && (
+                <div className="bg-white rounded-xl p-12 text-center">
+                  <p className="text-gray-600">Nenhum post agendado ainda.</p>
+                </div>
+              )}
 
-            {pendingPosts.length === 0 && posts.length > 0 && (
-              <div className="bg-white rounded-xl p-12 text-center">
-                <p className="text-gray-600">Nenhum post pendente.</p>
-              </div>
-            )}
+            {pendingGroupedPosts.length === 0 &&
+              approvedGroupedPosts.length > 0 && (
+                <div className="bg-white rounded-xl p-12 text-center">
+                  <p className="text-gray-600">Nenhum post pendente.</p>
+                </div>
+              )}
 
-            {approvedPosts.length > 0 && (
+            {approvedGroupedPosts.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                 <button
                   onClick={() => setShowApproved((prev) => !prev)}
                   className="flex items-center justify-between w-full p-6 text-left"
                 >
                   <h3 className="text-lg font-bold text-gray-900">
-                    Aprovados ({approvedPosts.length})
+                    Aprovados ({approvedGroupedPosts.length})
                   </h3>
                   <ChevronDown
                     className={`w-5 h-5 transition-transform ${
@@ -490,16 +681,16 @@ export const ClientPreview = () => {
                 </button>
                 {showApproved && (
                   <div className="space-y-4 p-6 border-t border-gray-100">
-                    {approvedPosts.map((post) => {
-                      const dateInfo = formatDate(post.scheduled_date);
+                    {approvedGroupedPosts.map((group) => {
+                      const dateInfo = formatDate(group.scheduled_date);
                       return (
                         <div
-                          key={post.id}
+                          key={group.id}
                           className="flex gap-4 p-4 border border-gray-200 rounded-lg"
                         >
-                          {post.images && post.images.length > 0 && (
+                          {group.images && group.images.length > 0 && (
                             <img
-                              src={post.images[0].image_url}
+                              src={group.images[0].image_url}
                               alt="Post preview"
                               className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
                             />
@@ -512,21 +703,21 @@ export const ClientPreview = () => {
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              {getStatusBadge(post.status)}
+                              {getStatusBadge(group.status)}
                               <span className="text-sm text-gray-600">
-                                {translatePostType(post.post_type)}
+                                {translatePostType(group.posts[0].post_type)}
                               </span>
                             </div>
-                            {post.caption && (
+                            {group.baseCaption && (
                               <p className="text-sm text-gray-700 line-clamp-2">
-                                {post.caption}
+                                {group.baseCaption}
                               </p>
                             )}
                           </div>
                           <button
                             onClick={() => {
-                              if (post.images && post.images.length > 0) {
-                                handleDownload(post.images[0]);
+                              if (group.images && group.images.length > 0) {
+                                handleDownload(group.images[0]);
                               }
                             }}
                             className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -545,7 +736,7 @@ export const ClientPreview = () => {
         )}
       </div>
 
-      {showChangeRequest && selectedPost && (
+      {showChangeRequest && selectedGroup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6">
             <div className="flex items-center justify-between mb-4">
@@ -612,17 +803,17 @@ export const ClientPreview = () => {
         </div>
       )}
 
-      {selectedPost && !showChangeRequest && (
+      {selectedGroup && !showChangeRequest && (
         <div
           className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50 overflow-auto"
-          onClick={() => setSelectedPost(null)}
+          onClick={() => setSelectedGroup(null)}
         >
           <div className="max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <div className="bg-white rounded-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-              {selectedPost.images && selectedPost.images.length > 0 && (
+              {selectedGroup.images && selectedGroup.images.length > 0 && (
                 <div className="max-h-[60vh] overflow-hidden">
                   <PostCarousel
-                    images={selectedPost.images}
+                    images={selectedGroup.images}
                     showDownloadButton={true}
                     onDownload={handleDownload}
                   />
@@ -634,22 +825,53 @@ export const ClientPreview = () => {
                     Detalhes do Post
                   </h3>
                   <button
-                    onClick={() => setSelectedPost(null)}
+                    onClick={() => setSelectedGroup(null)}
                     className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
                   >
                     Fechar
                   </button>
                 </div>
-                {selectedPost.caption && (
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap mb-4">
-                    {selectedPost.caption}
+                {/* --- Variações de Legenda no Modal --- */}
+                <div className="bg-gray-50 rounded-lg p-4 space-y-3 mb-4">
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                    {selectedGroup.baseCaption || (
+                      <span className="italic">Sem legenda.</span>
+                    )}
                   </p>
-                )}
+                  {selectedGroup.captionVariations.size > 1 && (
+                    <div className="border-t border-gray-200 pt-3">
+                      <h4 className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1.5">
+                        <MessageSquareDiff className="w-4 h-4" />
+                        Variações de Legenda:
+                      </h4>
+                      <div className="space-y-2">
+                        {Array.from(selectedGroup.captionVariations.entries())
+                          .filter(
+                            ([caption]) => caption !== selectedGroup.baseCaption
+                          )
+                          .map(([caption, clients], idx) => (
+                            <div
+                              key={idx}
+                              className="text-sm p-3 bg-white border border-gray-200 rounded-md"
+                            >
+                              <p className="whitespace-pre-wrap text-gray-700">
+                                {caption}
+                              </p>
+                              <p className="text-xs font-medium text-gray-500 mt-1.5">
+                                Para: {clients.join(", ")}
+                              </p>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <div className="flex gap-3">
-                  {selectedPost.status === "pending" && (
+                  {(selectedGroup.status === "pending" ||
+                    selectedGroup.status === "change_requested") && (
                     <>
                       <button
-                        onClick={() => handleApprove(selectedPost.id)}
+                        onClick={() => handleApproveGroup(selectedGroup)}
                         disabled={loading}
                         className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white py-2 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
                       >
@@ -736,7 +958,7 @@ export const ClientPreview = () => {
                         </button>
                         <button
                           onClick={() => {
-                            setSelectedPost(post);
+                            openGroupModalFromPost(post); // Usa a nova função
                             setShowDateModal(false);
                             setShowChangeRequest(true);
                           }}
