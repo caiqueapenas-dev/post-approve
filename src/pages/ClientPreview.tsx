@@ -86,11 +86,14 @@ export const ClientPreview = () => {
 
   const fetchClientData = async () => {
     try {
+      console.log("Fetching client data for linkId:", linkId);
       const { data: clientData } = await supabase
         .from("clients")
         .select("*")
         .eq("unique_link_id", linkId)
         .maybeSingle();
+
+      console.log("Client data:", clientData);
 
       if (!clientData) {
         setClient(null);
@@ -109,12 +112,16 @@ export const ClientPreview = () => {
           .map((name: string) => name.trim())
           .filter((name: string) => name.length > 0);
 
+        console.log("Group client names:", clientNames);
+
         if (clientNames.length > 0) {
           // 1. Buscar os IDs dos clientes pelos nomes
           const { data: clientIdsData, error: idsError } = await supabase
             .from("clients")
             .select("id")
             .in("name", clientNames);
+
+          console.log("Client IDs data:", clientIdsData);
 
           if (idsError) {
             console.error("Error fetching client IDs for group:", idsError);
@@ -123,6 +130,8 @@ export const ClientPreview = () => {
           }
 
           const clientIds = clientIdsData.map((c) => c.id);
+
+          console.log("Client IDs:", clientIds);
 
           if (clientIds.length > 0) {
             // 2. Buscar posts onde o client_id está na lista de IDs
@@ -138,6 +147,8 @@ export const ClientPreview = () => {
               )
               .in("client_id", clientIds)
               .order("scheduled_date", { ascending: true });
+
+            console.log("Group posts data:", groupPostsData);
             postsData = groupPostsData as any;
           } else {
             postsData = [];
@@ -158,6 +169,8 @@ export const ClientPreview = () => {
           )
           .eq("client_id", clientData.id)
           .order("scheduled_date", { ascending: true });
+
+        console.log("Single client posts data:", singleClientPostsData);
         postsData = singleClientPostsData as any;
       }
 
