@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Post } from "../lib/supabase"; // Correção 1: Removido 'PostStatus' não utilizado
+import { Post, Client } from "../lib/supabase"; // Correção 1: Adicionado Client
 import {
   ChevronLeft,
   ChevronRight,
@@ -7,6 +7,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Calendar,
+  User, // Adicionado Ícone User
 } from "lucide-react";
 import { getStatusBadgeClasses } from "../lib/utils";
 
@@ -43,6 +44,14 @@ type CalendarViewProps = {
 };
 
 type ViewMode = "weekly" | "monthly";
+
+// NOVO: Tipo para agrupar posts por cliente no calendário
+type ClientPostGroup = {
+  client: Client;
+  posts: Post[];
+  count: number;
+  firstPost: Post;
+};
 
 export const CalendarView = ({
   posts,
@@ -86,14 +95,44 @@ export const CalendarView = ({
   };
 
   const getPostsForDate = (date: Date) => {
-    return posts.filter((post) => {
-      const postDate = new Date(post.scheduled_date);
-      return (
-        postDate.getUTCDate() === date.getUTCDate() &&
-        postDate.getUTCMonth() === date.getUTCMonth() &&
-        postDate.getUTCFullYear() === date.getUTCFullYear()
-      );
-    });
+    return posts
+      .filter((post) => {
+        const postDate = new Date(post.scheduled_date);
+        return (
+          postDate.getUTCDate() === date.getUTCDate() &&
+          postDate.getUTCMonth() === date.getUTCMonth() &&
+          postDate.getUTCFullYear() === date.getUTCFullYear()
+        );
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.scheduled_date).getTime() -
+          new Date(b.scheduled_date).getTime()
+      ); // Ordena por hora
+  };
+
+  // NOVO: Agrupa os posts do dia por cliente
+  const getClientGroupsForDate = (dayPosts: Post[]): ClientPostGroup[] => {
+    const map = new Map<string, ClientPostGroup>();
+
+    for (const post of dayPosts) {
+      if (!post.client) continue; // Pula posts sem cliente (não deve acontecer)
+      const clientId = post.client.id;
+
+      if (map.has(clientId)) {
+        const group = map.get(clientId)!;
+        group.posts.push(post);
+        group.count++;
+      } else {
+        map.set(clientId, {
+          client: post.client,
+          posts: [post],
+          count: 1,
+          firstPost: post, // Pega o primeiro post (já que estão ordenados por hora)
+        });
+      }
+    }
+    return Array.from(map.values());
   };
 
   const dates =
@@ -245,9 +284,10 @@ export const CalendarView = ({
 
       {viewMode === "weekly" ? (
         <div className="space-y-2">
-          {/* Headers removidos para a visualização vertical */}
+          {/* --- VIEW SEMANAL --- */}
           {dates.map((date) => {
             const dayPosts = getPostsForDate(date);
+            const clientGroups = getClientGroupsForDate(dayPosts); // Agrupa por cliente
             return (
               <div
                 key={date.toISOString()}
@@ -268,72 +308,98 @@ export const CalendarView = ({
                   })}{" "}
                   - {date.getUTCDate()}
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                  {dayPosts.map((post) => (
-                    <button
-                      key={post.id}
-                      onClick={() => onPostClick(post)}
-                      className="w-full text-left bg-gray-100 hover:bg-gray-200 rounded-lg overflow-hidden transition-colors border"
+                {/* --- MODIFICADO: Lista de Grupos de Clientes --- */}
+                <div className="space-y-2">
+                  {clientGroups.map((group) => (
+                    <div
+                      key={group.client.id}
+                      className="flex items-center gap-2"
                     >
-                      {post.images && post.images.length > 0 && (
-                        <img
-                          src={post.images[0].image_url}
-                          alt="Preview"
-                          className="w-full h-24 object-cover"
-                        />
-                      )}
-                      <div className="p-2 space-y-0.5">
-                        <div className="flex items-center gap-1.5">
-                          <div
-                            className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{
-                              backgroundColor: post.client?.color || "#111827",
-                            }}
+                      {/* Tag do Cliente */}
+                      <span
+                        className="flex-shrink-0 flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
+                        style={{
+                          backgroundColor: `${
+                            group.client.color || "#6b7280"
+                          }33`,
+                          color: group.client.color || "#6b7280",
+                        }}
+                        title={group.client.display_name || group.client.name}
+                      >
+                        {group.client.avatar_url ? (
+                          <img
+                            src={group.client.avatar_url}
+                            alt={group.client.name}
+                            className="w-4 h-4 rounded-full object-cover"
                           />
-                          <p className="text-xs capitalize font-medium text-gray-800">
-                            {post.post_type}
-                          </p>
-                        </div>
-                        <p className="text-xs text-gray-600">
-                          {new Date(post.scheduled_date).toLocaleTimeString(
-                            "pt-BR",
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              timeZone: "UTC",
-                            }
-                          )}
-                        </p>
-                        {(() => {
-                          const {
-                            badge,
-                            text,
-                            icon: iconColor,
-                          } = getStatusBadgeClasses(post.status);
-                          let IconComponent = Clock; // Default
-                          if (post.status === "change_requested")
-                            IconComponent = AlertCircle;
-                          if (
-                            post.status === "approved" ||
-                            post.status === "published"
-                          )
-                            IconComponent = CheckCircle2;
-                          if (post.status === "agendado")
-                            IconComponent = Calendar;
-
-                          return (
-                            <span
-                              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${badge}`}
-                            >
-                              <IconComponent
-                                className={`w-3 h-3 ${iconColor}`}
+                        ) : (
+                          <User className="w-3 h-3" />
+                        )}
+                        <span className="hidden sm:inline">
+                          {group.client.display_name || group.client.name}
+                        </span>
+                      </span>
+                      {/* Posts desse Cliente */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                        {group.posts.map((post) => (
+                          <button
+                            key={post.id}
+                            onClick={() => onPostClick(post)}
+                            className="w-full text-left bg-gray-100 hover:bg-gray-200 rounded-lg overflow-hidden transition-colors border"
+                          >
+                            {post.images && post.images.length > 0 && (
+                              <img
+                                src={post.images[0].image_url}
+                                alt="Preview"
+                                className="w-full h-20 object-cover"
                               />
-                              <span>{text}</span>
-                            </span>
-                          );
-                        })()}
+                            )}
+                            <div className="p-2 space-y-0.5">
+                              <p className="text-xs capitalize font-medium text-gray-800">
+                                {post.post_type}
+                              </p>
+                              <p className="text-xs text-gray-600">
+                                {new Date(
+                                  post.scheduled_date
+                                ).toLocaleTimeString("pt-BR", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  timeZone: "UTC",
+                                })}
+                              </p>
+                              {(() => {
+                                const {
+                                  badge,
+                                  text,
+                                  icon: iconColor,
+                                } = getStatusBadgeClasses(post.status);
+                                let IconComponent = Clock; // Default
+                                if (post.status === "change_requested")
+                                  IconComponent = AlertCircle;
+                                if (
+                                  post.status === "approved" ||
+                                  post.status === "published"
+                                )
+                                  IconComponent = CheckCircle2;
+                                if (post.status === "agendado")
+                                  IconComponent = Calendar;
+
+                                return (
+                                  <span
+                                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${badge}`}
+                                  >
+                                    <IconComponent
+                                      className={`w-3 h-3 ${iconColor}`}
+                                    />
+                                    <span>{text}</span>
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                          </button>
+                        ))}
                       </div>
-                    </button>
+                    </div>
                   ))}
                 </div>
                 {dayPosts.length === 0 && (
@@ -345,6 +411,7 @@ export const CalendarView = ({
         </div>
       ) : (
         <div className="grid grid-cols-7 gap-2">
+          {/* --- VIEW MENSAL --- */}
           {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
             <div
               key={day}
@@ -355,8 +422,9 @@ export const CalendarView = ({
           ))}
           {dates.map((date) => {
             const dayPosts = getPostsForDate(date);
+            const clientGroups = getClientGroupsForDate(dayPosts); // Agrupa por cliente
 
-            // Lógica da Borda de Status
+            // Lógica da Borda de Status (baseada nos posts individuais)
             let statusBorderClass = "";
             if (dayPosts.length > 0) {
               const hasPending = dayPosts.some(
@@ -369,13 +437,13 @@ export const CalendarView = ({
               );
 
               if (hasPending) {
-                statusBorderClass = "border-t-4 border-t-yellow-400"; // Pendente (Prioridade)
+                statusBorderClass = "border-t-4 border-t-yellow-400";
               } else if (hasApproved) {
-                statusBorderClass = "border-t-4 border-t-green-500"; // Aprovado (Ação)
+                statusBorderClass = "border-t-4 border-t-green-500";
               } else if (hasAgendado) {
-                statusBorderClass = "border-t-4 border-t-cyan-500"; // Agendado
+                statusBorderClass = "border-t-4 border-t-cyan-500";
               } else if (allPublished) {
-                statusBorderClass = "border-t-4 border-t-blue-500"; // Publicado
+                statusBorderClass = "border-t-4 border-t-blue-500";
               }
             }
 
@@ -386,10 +454,10 @@ export const CalendarView = ({
                 onClick={() =>
                   onDateClick ? onDateClick(date, dayPosts) : undefined
                 }
-                className={`min-h-[100px] p-2 rounded-lg border text-left ${
+                className={`min-h-[100px] p-2 rounded-lg border text-left align-top ${
                   onDateClick
                     ? "cursor-pointer hover:bg-gray-100 transition-colors"
-                    : ""
+                    : "cursor-default"
                 } ${
                   !isCurrentMonth(date)
                     ? "bg-gray-50 border-gray-100"
@@ -397,6 +465,7 @@ export const CalendarView = ({
                     ? "border-gray-900 bg-gray-50"
                     : "border-gray-200 bg-white"
                 } ${statusBorderClass}`}
+                disabled={!onDateClick} // Desabilita o botão se não houver onDateClick
               >
                 <div
                   className={`text-sm font-medium mb-1 ${
@@ -409,122 +478,75 @@ export const CalendarView = ({
                 >
                   {date.getUTCDate()}
                 </div>
-                {/* (Alteração 5) Agrupa posts por COR do cliente e exibe contagem DENTRO do dot */}
-                {(() => {
-                  // Limite de quantos *grupos de cores* mostrar
-                  const COLOR_DOT_LIMIT = 5; // Você pode ajustar este limite
+                {/* --- MODIFICADO: Renderiza as Tags de Cliente --- */}
+                <div className="flex flex-wrap gap-1">
+                  {clientGroups.map((group) => {
+                    const textColorClass = getTextColorForBackground(
+                      group.client.color
+                    );
+                    const title = `${
+                      group.client.display_name || group.client.name
+                    } (${group.count} post${group.count > 1 ? "s" : ""})`;
 
-                  // 1. Agrupa posts por COR e conta
-                  const colorsMap = new Map<
-                    string, // A chave agora é a COR
-                    {
-                      color: string;
-                      clientNames: Set<string>; // Guarda os nomes dos clientes dessa cor
-                      firstPost: Post; // Para o clique (pega o primeiro post encontrado dessa cor)
-                      count: number; // Total de posts dessa cor
-                    }
-                  >();
-
-                  // Ordena os posts do dia por hora para pegar o 'firstPost' consistentemente
-                  const sortedDayPosts = dayPosts.sort(
-                    (a, b) =>
-                      new Date(a.scheduled_date).getTime() -
-                      new Date(b.scheduled_date).getTime()
-                  );
-
-                  sortedDayPosts.forEach((post) => {
-                    const clientColor = post.client?.color || "#9ca3af"; // Usa a cor como chave
-                    const clientName = post.client?.name || "Post";
-
-                    if (colorsMap.has(clientColor)) {
-                      const existingEntry = colorsMap.get(clientColor)!;
-                      existingEntry.count += 1;
-                      existingEntry.clientNames.add(clientName); // Adiciona o nome do cliente ao Set
-                    } else {
-                      colorsMap.set(clientColor, {
-                        color: clientColor,
-                        clientNames: new Set([clientName]), // Inicia o Set com o nome do cliente
-                        firstPost: post, // Guarda o primeiro post encontrado dessa cor
-                        count: 1,
-                      });
-                    }
-                  });
-
-                  // 2. Prepara os arrays para renderizar
-                  const colorDots = Array.from(colorsMap.values());
-                  const dotsToShow = colorDots.slice(0, COLOR_DOT_LIMIT);
-
-                  // 3. Calcula o +X (contagem de *posts* restantes)
-                  const postsInDotsShown = dotsToShow.reduce(
-                    (acc, dot) => acc + dot.count,
-                    0
-                  );
-                  const remainingPostCount = dayPosts.length - postsInDotsShown;
-                  const showPlus = remainingPostCount > 0;
-
-                  if (dayPosts.length === 0) return null;
-
-                  // 4. Renderiza
-                  return (
-                    <div className="flex flex-wrap gap-x-2 gap-y-1 items-center">
-                      {dotsToShow.map((colorDot) => {
-                        // Calcula a cor do texto (preto ou branco)
-                        const textColorClass = getTextColorForBackground(
-                          colorDot.color
-                        );
-                        // Cria a string de nomes de clientes para o tooltip
-                        const clientNamesString = Array.from(
-                          colorDot.clientNames
-                        ).join(", ");
-                        return (
-                          <div
-                            key={colorDot.color} // A chave do React agora é a cor
-                            onClick={(e) => {
-                              if (onDateClick) {
-                                e.stopPropagation();
-                                return; // Deixa o modal do dia abrir
-                              }
-                              // Admin: abre o editor do *primeiro post encontrado* dessa cor
-                              e.stopPropagation();
-                              onPostClick(colorDot.firstPost);
+                    return (
+                      <div
+                        key={group.client.id}
+                        onClick={(e) => {
+                          if (onDateClick) {
+                            e.stopPropagation(); // Deixa o onDateClick do dia funcionar
+                            onDateClick(date, dayPosts);
+                            return;
+                          }
+                          // Se for o Admin, abre o primeiro post
+                          e.stopPropagation();
+                          onPostClick(group.firstPost);
+                        }}
+                        className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-80`}
+                        style={{
+                          backgroundColor: `${
+                            group.client.color || "#6b7280"
+                          }33`,
+                        }}
+                        title={title}
+                      >
+                        {group.client.avatar_url ? (
+                          <img
+                            src={group.client.avatar_url}
+                            alt={group.client.name}
+                            className="w-4 h-4 rounded-full object-cover"
+                          />
+                        ) : (
+                          <span
+                            className="w-4 h-4 rounded-full flex items-center justify-center"
+                            style={{
+                              backgroundColor: group.client.color || "#6b7280",
                             }}
-                            className={`flex items-center justify-center w-4 h-4 rounded-full ${
-                              !onDateClick
-                                ? "hover:opacity-75 transition-opacity cursor-pointer"
-                                : "cursor-default"
-                            }`}
-                            style={{ backgroundColor: colorDot.color }}
-                            title={`${clientNamesString} (${
-                              colorDot.count
-                            } post${colorDot.count > 1 ? "s" : ""})`} // Tooltip mostra os nomes dos clientes
                           >
-                            {/* Número DENTRO do dot */}
-                            {colorDot.count > 1 && (
-                              <span
-                                className={`text-[10px] font-bold ${textColorClass}`}
-                                style={{
-                                  textShadow:
-                                    textColorClass === "text-white"
-                                      ? "0 0 2px rgba(0,0,0,0.7)"
-                                      : "0 0 2px rgba(255,255,255,0.7)",
-                                }}
-                              >
-                                {colorDot.count > 9 ? "9+" : colorDot.count}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-
-                      {/* O +X restante */}
-                      {showPlus && (
-                        <span className="text-xs text-gray-500">
-                          +{remainingPostCount}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })()}
+                            <User
+                              className={`w-3 h-3 ${textColorClass}`}
+                              style={{
+                                textShadow:
+                                  textColorClass === "text-white"
+                                    ? "0 0 2px rgba(0,0,0,0.7)"
+                                    : "0 0 2px rgba(255,255,255,0.7)",
+                              }}
+                            />
+                          </span>
+                        )}
+                        {group.count > 1 && (
+                          <span
+                            className="font-bold"
+                            style={{
+                              color: group.client.color || "#6b7280",
+                            }}
+                          >
+                            {group.count}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </button>
             );
           })}
@@ -533,4 +555,3 @@ export const CalendarView = ({
     </div>
   );
 };
-// Correção 2: Removido '}' extra do final do arquivo

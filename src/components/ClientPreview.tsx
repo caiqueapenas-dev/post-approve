@@ -1,8 +1,15 @@
 import { useState, useEffect } from "react";
 import { useParams } from "./Router";
-import { supabase, Post, Client, PostImage } from "../lib/supabase";
+import {
+  supabase,
+  Post,
+  Client,
+  PostImage,
+  ChangeRequest,
+} from "../lib/supabase";
 import { PostCarousel } from "./PostCarousel";
 import { CalendarView } from "./CalendarView";
+import { AgendaView } from "./AgendaView"; // Importa a nova AgendaView
 import {
   CheckCircle2,
   MessageSquare,
@@ -37,7 +44,7 @@ export const ClientPreview = () => {
   const [client, setClient] = useState<Client | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [pageLoading, setPageLoading] = useState(true); // Estado de carregamento da página
-  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [viewMode, setViewMode] = useState<"agenda" | "calendar">("agenda"); // Alterado padrão para "agenda"
   const [selectedGroup, setSelectedGroup] = useState<GroupedPost | null>(null); // Renomeado de selectedPost
   const [showChangeRequest, setShowChangeRequest] = useState(false);
   const [changeType, setChangeType] = useState<
@@ -80,6 +87,7 @@ export const ClientPreview = () => {
       document.body.classList.remove("overflow-hidden");
     };
   }, [selectedGroup, showDateModal, showLeaveModal]);
+
   const fetchClientData = async () => {
     try {
       const { data: clientData } = await supabase
@@ -323,6 +331,10 @@ export const ClientPreview = () => {
       message: changeMessage,
     }));
 
+    // Limpa solicitações antigas PRIMEIRO
+    await supabase.from("change_requests").delete().in("post_id", postIds);
+
+    // Insere as novas
     await supabase.from("change_requests").insert(changeRequests);
 
     // Atualiza o status de TODOS os posts no grupo
@@ -464,15 +476,15 @@ export const ClientPreview = () => {
       <div className="max-w-4xl mx-auto px-2 py-6 space-y-6">
         <div className="flex gap-2">
           <button
-            onClick={() => setViewMode("list")}
+            onClick={() => setViewMode("agenda")}
             className={`flex items-center gap-2 px-2 py-2 rounded-lg font-medium transition-colors ${
-              viewMode === "list"
+              viewMode === "agenda"
                 ? "bg-gray-900 text-white"
                 : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
             }`}
           >
             <List className="w-4 h-4" />
-            Lista
+            Agenda
           </button>
           <button
             onClick={() => setViewMode("calendar")}
@@ -500,239 +512,23 @@ export const ClientPreview = () => {
         {viewMode === "calendar" ? (
           <div className="bg-white rounded-xl p-6 shadow-sm">
             <CalendarView
-              posts={posts}
+              posts={posts} // Passa os posts brutos (o componente agrupa internamente)
               onPostClick={openGroupModalFromPost}
               onDateClick={handleDateClick}
             />
           </div>
         ) : (
-          <div className="space-y-4">
-            {pendingGroupedPosts.map((group) => {
-              const dateInfo = formatDate(group.scheduled_date);
-              return (
-                <div
-                  key={group.id}
-                  className="bg-white rounded-xl shadow-sm overflow-hidden"
-                >
-                  {group.images && group.images.length > 0 && (
-                    <PostCarousel
-                      images={group.images}
-                      showDownloadButton={true}
-                      onDownload={handleDownload}
-                    />
-                  )}
-
-                  <div className="p-1 space-y-5">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-gray-600" />
-                          <span className="text-sm font-medium text-gray-900">
-                            {dateInfo.date} - {dateInfo.day}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {getStatusBadge(group.status)}
-                          <span className="text-sm text-gray-600">
-                            {translatePostType(group.posts[0].post_type)}
-                          </span>
-                        </div>
-                      </div>
-                      {/* --- NOVO: Client Tags --- */}
-                      <div className="flex flex-wrap gap-2">
-                        {group.clients.map((client) => (
-                          <span
-                            key={client.id}
-                            className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
-                            style={{
-                              backgroundColor: `${client.color || "#6b7280"}33`, // 20% opacity
-                              color: client.color || "#6b7280",
-                            }}
-                          >
-                            {client.avatar_url ? (
-                              <img
-                                src={client.avatar_url}
-                                alt={client.name}
-                                className="w-4 h-4 rounded-full object-cover"
-                              />
-                            ) : (
-                              <User className="w-3 h-3" />
-                            )}
-                            {client.display_name || client.name}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* --- ALTERADO: Legenda Base e Variações --- */}
-                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                        {group.baseCaption || (
-                          <span className="italic">Sem legenda.</span>
-                        )}
-                      </p>
-                      {group.captionVariations.size > 1 && (
-                        <div className="border-t border-gray-200 pt-3">
-                          <h4 className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1.5">
-                            <MessageSquareDiff className="w-4 h-4" />
-                            Variações de Legenda:
-                          </h4>
-                          <div className="space-y-2">
-                            {Array.from(group.captionVariations.entries())
-                              .filter(
-                                ([caption]) => caption !== group.baseCaption
-                              ) // Mostra apenas as legendas *diferentes*
-                              .map(([caption, clients], idx) => (
-                                <div
-                                  key={idx}
-                                  className="text-sm p-3 bg-white border border-gray-200 rounded-md"
-                                >
-                                  <p className="whitespace-pre-wrap text-gray-700">
-                                    {caption}
-                                  </p>
-                                  <p className="text-xs font-medium text-gray-500 mt-1.5">
-                                    Para: {clients.join(", ")}
-                                  </p>
-                                </div>
-                              ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {(group.status === "pending" ||
-                      group.status === "change_requested") && (
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => handleApproveGroup(group)}
-                          disabled={loading}
-                          className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white px-2 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
-                        >
-                          <CheckCircle2 className="w-5 h-5" />
-                          Aprovar
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedGroup(group);
-                            setShowChangeRequest(true);
-                          }}
-                          className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 rounded-lg font-medium hover:bg-gray-800 transition-colors"
-                        >
-                          <MessageSquare className="w-5 h-5" />
-                          Solicitar alteração
-                        </button>
-                      </div>
-                    )}
-
-                    {group.status === "change_requested" &&
-                      group.posts[0].change_requests &&
-                      group.posts[0].change_requests.length > 0 && (
-                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                          <div className="flex items-start gap-2">
-                            <MessageSquare className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-orange-900 mb-2">
-                                Sua Solicitação de Alteração
-                              </p>
-                              <p className="text-sm text-orange-700">
-                                {
-                                  group.posts[0].change_requests[
-                                    group.posts[0].change_requests.length - 1
-                                  ].message
-                                }
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                  </div>
-                </div>
-              );
-            })}
-
-            {pendingGroupedPosts.length === 0 &&
-              approvedGroupedPosts.length === 0 && (
-                <div className="bg-white rounded-xl p-12 text-center">
-                  <p className="text-gray-600">Nenhum post agendado ainda.</p>
-                </div>
-              )}
-
-            {pendingGroupedPosts.length === 0 &&
-              approvedGroupedPosts.length > 0 && (
-                <div className="bg-white rounded-xl p-12 text-center">
-                  <p className="text-gray-600">Nenhum post pendente.</p>
-                </div>
-              )}
-
-            {approvedGroupedPosts.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <button
-                  onClick={() => setShowApproved((prev) => !prev)}
-                  className="flex items-center justify-between w-full p-6 text-left"
-                >
-                  <h3 className="text-lg font-bold text-gray-900">
-                    Aprovados ({approvedGroupedPosts.length})
-                  </h3>
-                  <ChevronDown
-                    className={`w-5 h-5 transition-transform ${
-                      showApproved ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-                {showApproved && (
-                  <div className="space-y-4 p-6 border-t border-gray-100">
-                    {approvedGroupedPosts.map((group) => {
-                      const dateInfo = formatDate(group.scheduled_date);
-                      return (
-                        <div
-                          key={group.id}
-                          className="flex gap-4 p-4 border border-gray-200 rounded-lg"
-                        >
-                          {group.images && group.images.length > 0 && (
-                            <img
-                              src={group.images[0].image_url}
-                              alt="Post preview"
-                              className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-                            />
-                          )}
-                          <div className="flex-1 space-y-1.5">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-gray-600" />
-                              <span className="text-sm font-medium text-gray-900">
-                                {dateInfo.date} - {dateInfo.time}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {getStatusBadge(group.status)}
-                              <span className="text-sm text-gray-600">
-                                {translatePostType(group.posts[0].post_type)}
-                              </span>
-                            </div>
-                            {group.baseCaption && (
-                              <p className="text-sm text-gray-700 line-clamp-2">
-                                {group.baseCaption}
-                              </p>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => {
-                              if (group.images && group.images.length > 0) {
-                                handleDownload(group.images[0]);
-                              }
-                            }}
-                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                            title="Baixar mídia"
-                          >
-                            <Download className="w-5 h-5" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          // --- NOVO: Renderiza a AgendaView ---
+          <AgendaView
+            groupedPosts={[...pendingGroupedPosts, ...approvedGroupedPosts]}
+            loading={loading}
+            onApprove={handleApproveGroup}
+            onChangeRequest={(group) => {
+              setSelectedGroup(group);
+              setShowChangeRequest(true);
+            }}
+            onDownload={handleDownload}
+          />
         )}
       </div>
 
@@ -933,6 +729,29 @@ export const ClientPreview = () => {
                     />
                   )}
                   <div className="p-4 space-y-3">
+                    {/* Tag de Cliente Individual */}
+                    {post.client && (
+                      <span
+                        className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium w-fit" // w-fit
+                        style={{
+                          backgroundColor: `${
+                            post.client.color || "#6b7280"
+                          }33`,
+                          color: post.client.color || "#6b7280",
+                        }}
+                      >
+                        {post.client.avatar_url ? (
+                          <img
+                            src={post.client.avatar_url}
+                            alt={post.client.name}
+                            className="w-4 h-4 rounded-full object-cover"
+                          />
+                        ) : (
+                          <User className="w-3 h-3" />
+                        )}
+                        {post.client.display_name || post.client.name}
+                      </span>
+                    )}
                     <div className="flex items-center gap-2">
                       {getStatusBadge(post.status)}
                       <span className="text-sm text-gray-600">
@@ -960,12 +779,12 @@ export const ClientPreview = () => {
                           onClick={() => {
                             openGroupModalFromPost(post); // Usa a nova função
                             setShowDateModal(false);
-                            setShowChangeRequest(true);
+                            // setShowChangeRequest(true); // O modal de grupo abre, o usuário clica lá
                           }}
                           className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors text-sm"
                         >
                           <MessageSquare className="w-4 h-4" />
-                          Alterar
+                          Ver Post
                         </button>
                       </div>
                     )}
