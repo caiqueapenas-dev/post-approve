@@ -410,20 +410,38 @@ export const ClientPreview = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const { badge, text, icon: iconColor } = getStatusBadgeClasses(status);
-    let IconComponent = Clock; // Default
-    if (status === "change_requested") IconComponent = AlertCircle;
-    if (status === "approved" || status === "published")
-      IconComponent = CheckCircle2;
-    if (status === "agendado") IconComponent = Calendar;
+  // Função para traduzir o status (copiado de AgendaView)
+  const translateStatus = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "Pendente";
+      case "change_requested":
+        return "Alteração Solicitada";
+      case "approved":
+        return "Aprovado";
+      case "agendado":
+        return "Agendado";
+      case "published":
+        return "Publicado";
+      default:
+        return status;
+    }
+  };
 
+  const getStatusBadge = (status: string) => {
+    const { badge, icon } = getStatusBadgeClasses(status);
     return (
       <span
-        className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${badge}`}
+        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${badge}`}
       >
-        <IconComponent className={`w-3 h-3 ${iconColor}`} />
-        <span>{text}</span>
+        <svg
+          className={`h-2 w-2 ${icon}`}
+          fill="currentColor"
+          viewBox="0 0 8 8"
+        >
+          <circle cx={4} cy={4} r={3} />
+        </svg>
+        <span>{translateStatus(status)}</span>
       </span>
     );
   };
@@ -455,26 +473,26 @@ export const ClientPreview = () => {
 
   // 3. Conteúdo da página (se cliente for encontrado)
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-2 py-2">
+    <div className="min-h-screen bg-gray-100">
+      <header className="bg-white shadow-sm sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
             {client.avatar_url ? (
               <img
                 src={client.avatar_url}
                 alt="Logo"
-                className="w-12 h-12 rounded-full object-cover"
+                className="w-14 h-14 rounded-full object-cover border-2 border-gray-200"
               />
             ) : (
-              <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-                <User className="w-6 h-6 text-gray-400" />
+              <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-300">
+                <User className="w-7 h-7 text-gray-500" />
               </div>
             )}
             <div>
-              <h1 className="text-xl font-bold text-gray-900">
+              <h1 className="text-2xl font-extrabold text-gray-900">
                 {client.display_name || client.name}
               </h1>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-600 mt-0.5">
                 Revise e aprove seus posts agendados
               </p>
             </div>
@@ -482,17 +500,15 @@ export const ClientPreview = () => {
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-2 py-6 space-y-6">
-        <div className="flex gap-2">
-
-
-          <div className="inline-flex rounded-lg shadow-sm">
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+        <div className="flex justify-center">
+          <div className="inline-flex rounded-full shadow-sm bg-white p-1">
             <button
               type="button"
-              className={`relative inline-flex items-center rounded-l-md border border-gray-300 px-4 py-2 text-sm font-medium focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+              className={`relative inline-flex items-center px-5 py-2 text-sm font-medium rounded-full transition-all duration-200 ease-in-out ${
                 viewOptions.viewMode === "agenda"
-                  ? "bg-gray-900 text-white"
-                  : "bg-white text-gray-700 hover:bg-gray-50"
+                  ? "bg-gray-900 text-white shadow-md"
+                  : "text-gray-700 hover:bg-gray-100"
               }`}
               onClick={() =>
                 setViewOptions({ ...viewOptions, viewMode: "agenda" })
@@ -503,10 +519,10 @@ export const ClientPreview = () => {
             {client.name !== "clean saude" && (
               <button
                 type="button"
-                className={`relative -ml-px inline-flex items-center rounded-r-md border border-gray-300 px-4 py-2 text-sm font-medium focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                className={`relative inline-flex items-center px-5 py-2 text-sm font-medium rounded-full transition-all duration-200 ease-in-out ${
                   viewOptions.viewMode === "calendar"
-                    ? "bg-gray-900 text-white"
-                    : "bg-white text-gray-700 hover:bg-gray-50"
+                    ? "bg-gray-900 text-white shadow-md"
+                    : "text-gray-700 hover:bg-gray-100"
                 }`}
                 onClick={() =>
                   setViewOptions({ ...viewOptions, viewMode: "calendar" })
@@ -517,7 +533,8 @@ export const ClientPreview = () => {
             )}
           </div>
         </div>
-        {viewOptions.viewMode === "calendar" && client.name !== "clean saude" ? (
+        {viewOptions.viewMode === "calendar" &&
+        client.name !== "clean saude" ? (
           <div className="bg-white rounded-xl p-6 shadow-sm">
             <CalendarView
               posts={posts} // Passa os posts brutos (o componente agrupa internamente)
@@ -527,10 +544,7 @@ export const ClientPreview = () => {
           </div>
         ) : (
           <AgendaView
-            groupedPosts={[
-              ...pendingGroupedPosts,
-              ...approvedGroupedPosts,
-            ]}
+            groupedPosts={[...pendingGroupedPosts, ...approvedGroupedPosts]}
             loading={loading}
             onApprove={handleApproveGroup}
             onChangeRequest={(group) => {
@@ -543,29 +557,45 @@ export const ClientPreview = () => {
       </div>
 
       {showChangeRequest && selectedGroup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">
-                Solicitar alterações
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div
+            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-2xl font-bold text-gray-900">
+                Solicitar Alterações
               </h3>
               <button
                 onClick={() => setShowChangeRequest(false)}
-                className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors"
               >
-                Fechar
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="w-6 h-6"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
               </button>
             </div>
 
-            <form onSubmit={handleChangeRequest} className="space-y-4">
+            <form onSubmit={handleChangeRequest} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Tipo de Alteração
                 </label>
                 <select
                   value={changeType}
                   onChange={(e) => setChangeType(e.target.value as any)}
-                  className="w-full px-2 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-gray-800"
                 >
                   <option value="visual">Visual/Mídia</option>
                   <option value="date">Data/Hora</option>
@@ -575,15 +605,15 @@ export const ClientPreview = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Mensagem
                 </label>
                 <textarea
                   value={changeMessage}
                   onChange={(e) => setChangeMessage(e.target.value)}
                   required
-                  rows={4}
-                  className="w-full px-2 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none resize-none"
+                  rows={5}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none resize-none text-gray-800"
                   placeholder="Por favor, descreva as alterações que você gostaria..."
                 />
               </div>
@@ -592,16 +622,16 @@ export const ClientPreview = () => {
                 <button
                   type="button"
                   onClick={() => setShowChangeRequest(false)}
-                  className="flex-1 px-2 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-5 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors font-medium"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 px-2 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
+                  className="flex-1 px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                 >
-                  {loading ? "Enviando..." : "Enviar Solicitação"}{" "}
+                  {loading ? "Enviando..." : "Enviar Solicitação"}
                 </button>
               </div>
             </form>
@@ -611,35 +641,36 @@ export const ClientPreview = () => {
 
       {selectedGroup && !showChangeRequest && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50 overflow-auto"
+          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 overflow-y-auto"
           onClick={() => setSelectedGroup(null)}
         >
-          <div className="max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-white rounded-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-              {selectedGroup.images && selectedGroup.images.length > 0 && (
-                <div className="max-h-[60vh] overflow-hidden">
-                  <PostCarousel
-                    images={selectedGroup.images}
-                    showDownloadButton={true}
-                    onDownload={handleDownload}
-                  />
-                </div>
-              )}
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-gray-900">
+          <div
+            className="max-w-xl w-full bg-white rounded-2xl shadow-xl overflow-hidden animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {selectedGroup.images && selectedGroup.images.length > 0 && (
+              <div className="max-h-[60vh] bg-gray-100 flex items-center justify-center">
+                <PostCarousel
+                  images={selectedGroup.images}
+                  showDownloadButton={true}
+                  onDownload={handleDownload}
+                />
+              </div>
+            )}
+            <div className="p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
                     Detalhes do Post
                   </h3>
                   {/* Tags de Cliente */}
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-2">
                     {selectedGroup.clients.map((client) => (
                       <span
                         key={client.id}
-                        className="flex items-center gap-1 px-1 py-0.5 rounded-full text-[0.6rem] font-medium"
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium"
                         style={{
-                          backgroundColor: `${
-                            client.color || "#6b7280"
-                          }33`,
+                          backgroundColor: `${client.color || "#6b7280"}20`,
                           color: client.color || "#6b7280",
                         }}
                       >
@@ -647,79 +678,93 @@ export const ClientPreview = () => {
                           <img
                             src={client.avatar_url}
                             alt={client.name}
-                            className="w-3 h-3 rounded-full object-cover"
+                            className="w-4 h-4 rounded-full object-cover"
                           />
                         ) : (
-                          <User className="w-2.5 h-2.5" />
+                          <User className="w-3.5 h-3.5" />
                         )}
                         {client.display_name || client.name}
                       </span>
                     ))}
                   </div>
-                  <button
-                    onClick={() => setSelectedGroup(null)}
-                    className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+                </div>
+                <button
+                  onClick={() => setSelectedGroup(null)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="w-6 h-6"
                   >
-                    Fechar
-                  </button>
-                </div>
-                {/* --- Variações de Legenda no Modal --- */}
-                <div className="bg-gray-50 rounded-lg p-4 space-y-3 mb-4">
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {selectedGroup.baseCaption || (
-                      <span className="italic">Sem legenda.</span>
-                    )}
-                  </p>
-                  {selectedGroup.captionVariations.size > 1 && (
-                    <div className="border-t border-gray-200 pt-3">
-                      <h4 className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1.5">
-                        <MessageSquareDiff className="w-4 h-4" />
-                        Variações de Legenda:
-                      </h4>
-                      <div className="space-y-2">
-                        {Array.from(selectedGroup.captionVariations.entries())
-                          .filter(
-                            ([caption]) => caption !== selectedGroup.baseCaption
-                          )
-                          .map(([caption, clients], idx) => (
-                            <div
-                              key={idx}
-                              className="text-sm p-3 bg-white border border-gray-200 rounded-md"
-                            >
-                              <p className="whitespace-pre-wrap text-gray-700">
-                                {caption}
-                              </p>
-                              <p className="text-xs font-medium text-gray-500 mt-1.5">
-                                Para: {clients.join(", ")}
-                              </p>
-                            </div>
-                          ))}
-                      </div>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              {/* --- Variações de Legenda no Modal --- */}
+              <div className="bg-gray-50 rounded-lg p-4 space-y-4 mb-6">
+                <p className="text-base text-gray-800 whitespace-pre-wrap font-medium">
+                  {selectedGroup.baseCaption || (
+                    <span className="italic text-gray-500">Sem legenda.</span>
+                  )}
+                </p>
+                {selectedGroup.captionVariations.size > 1 && (
+                  <div className="border-t border-gray-200 pt-4 mt-4">
+                    <h4 className="text-sm font-semibold text-gray-600 mb-3 flex items-center gap-2">
+                      <MessageSquareDiff className="w-5 h-5 text-gray-500" />
+                      Variações de Legenda:
+                    </h4>
+                    <div className="space-y-3">
+                      {Array.from(selectedGroup.captionVariations.entries())
+                        .filter(
+                          ([caption]) => caption !== selectedGroup.baseCaption
+                        )
+                        .map(([caption, clients], idx) => (
+                          <div
+                            key={idx}
+                            className="text-sm p-3 bg-white border border-gray-200 rounded-md shadow-sm"
+                          >
+                            <p className="whitespace-pre-wrap text-gray-700">
+                              {caption}
+                            </p>
+                            <p className="text-xs font-medium text-gray-500 mt-2">
+                              Para: {clients.join(", ")}
+                            </p>
+                          </div>
+                        ))}
                     </div>
-                  )}
-                </div>
-                <div className="flex gap-3">
-                  {(selectedGroup.status === "pending" ||
-                    selectedGroup.status === "change_requested") && (
-                    <>
-                      <button
-                        onClick={() => handleApproveGroup(selectedGroup)}
-                        disabled={loading}
-                        className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white py-2 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
-                      >
-                        <CheckCircle2 className="w-5 h-5" />
-                        Aprovar
-                      </button>
-                      <button
-                        onClick={() => setShowChangeRequest(true)}
-                        className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors"
-                      >
-                        <MessageSquare className="w-5 h-5" />
-                        Solicitar alterações
-                      </button>
-                    </>
-                  )}
-                </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                {(selectedGroup.status === "pending" ||
+                  selectedGroup.status === "change_requested") && (
+                  <>
+                    <button
+                      onClick={() => handleApproveGroup(selectedGroup)}
+                      disabled={loading}
+                      className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+                    >
+                      <CheckCircle2 className="w-5 h-5" />
+                      Aprovar
+                    </button>
+                    <button
+                      onClick={() => setShowChangeRequest(true)}
+                      className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors text-lg"
+                    >
+                      <MessageSquare className="w-5 h-5" />
+                      Solicitar alterações
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -729,33 +774,46 @@ export const ClientPreview = () => {
       {/* Modal de Múltiplos Posts por Dia */}
       {showDateModal && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto"
+          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 overflow-y-auto"
           onClick={() => setShowDateModal(false)}
         >
           <div
-            className="bg-white rounded-2xl max-w-sm w-full max-h-[80vh] overflow-auto"
+            className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-xl animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 sticky top-0 bg-white border-b border-gray-200">
+            <div className="p-6 sticky top-0 bg-white border-b border-gray-200 z-10">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-gray-900">
+                <h3 className="text-2xl font-bold text-gray-900">
                   Posts do dia{" "}
                   {selectedDatePosts.length > 0 &&
                     formatDate(selectedDatePosts[0].scheduled_date).date}
                 </h3>
                 <button
                   onClick={() => setShowDateModal(false)}
-                  className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  Fechar
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="w-6 h-6"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
                 </button>
               </div>
             </div>
-            <div className="space-y-4 p-6">
+            <div className="space-y-5 p-6">
               {selectedDatePosts.map((post) => (
                 <div
                   key={post.id}
-                  className="border border-gray-200 rounded-xl overflow-hidden"
+                  className="border border-gray-200 rounded-xl overflow-hidden shadow-sm"
                 >
                   {post.images && post.images.length > 0 && (
                     <PostCarousel
@@ -764,15 +822,15 @@ export const ClientPreview = () => {
                       onDownload={handleDownload}
                     />
                   )}
-                  <div className="p-4 space-y-3">
+                  <div className="p-4 space-y-4">
                     {/* Tag de Cliente Individual */}
                     {post.client && (
                       <span
-                        className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium w-fit" // w-fit
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium w-fit"
                         style={{
                           backgroundColor: `${
                             post.client.color || "#6b7280"
-                          }33`,
+                          }20`,
                           color: post.client.color || "#6b7280",
                         }}
                       >
@@ -783,41 +841,40 @@ export const ClientPreview = () => {
                             className="w-4 h-4 rounded-full object-cover"
                           />
                         ) : (
-                          <User className="w-3 h-3" />
+                          <User className="w-3.5 h-3.5" />
                         )}
                         {post.client.display_name || post.client.name}
                       </span>
                     )}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       {getStatusBadge(post.status)}
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-gray-600 font-medium">
                         {translatePostType(post.post_type)}
                       </span>
                     </div>
                     {post.caption && (
-                      <div className="bg-gray-50 rounded-lg p-3">
+                      <div className="bg-gray-50 rounded-lg p-4">
                         <p className="text-sm text-gray-700 whitespace-pre-wrap">
                           {post.caption}
                         </p>
                       </div>
                     )}
                     {post.status === "pending" && (
-                      <div className="flex gap-3">
+                      <div className="flex flex-col sm:flex-row gap-3 pt-2">
                         <button
                           onClick={() => handleApprove(post.id)}
                           disabled={loading}
-                          className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white py-2 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 text-sm"
+                          className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                         >
                           <CheckCircle2 className="w-4 h-4" />
                           Aprovar
                         </button>
                         <button
                           onClick={() => {
-                            openGroupModalFromPost(post); // Usa a nova função
+                            openGroupModalFromPost(post);
                             setShowDateModal(false);
-                            // setShowChangeRequest(true); // O modal de grupo abre, o usuário clica lá
                           }}
-                          className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors text-sm"
+                          className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white py-2 rounded-lg font-semibold hover:bg-gray-800 transition-colors text-sm"
                         >
                           <MessageSquare className="w-4 h-4" />
                           Ver Post
@@ -835,18 +892,18 @@ export const ClientPreview = () => {
       {/* Modal de Aviso de Saída */}
       {showLeaveModal && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto"
+          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 overflow-y-auto"
           onClick={() => setShowLeaveModal(false)}
         >
           <div
-            className="bg-white rounded-2xl max-w-sm w-full p-6"
+            className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <ExternalLink className="w-6 h-6 text-blue-600" />
+              <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ExternalLink className="w-7 h-7 text-blue-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
                 Você está saindo
               </h3>
               <p className="text-gray-600 mb-6">
@@ -858,7 +915,7 @@ export const ClientPreview = () => {
               <button
                 type="button"
                 onClick={() => setShowLeaveModal(false)}
-                className="flex-1 px-2 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex-1 px-5 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors font-medium"
               >
                 Cancelar
               </button>
@@ -867,7 +924,7 @@ export const ClientPreview = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setShowLeaveModal(false)}
-                className="flex-1 text-center px-2 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors"
+                className="flex-1 text-center px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-semibold"
               >
                 Continuar
               </a>

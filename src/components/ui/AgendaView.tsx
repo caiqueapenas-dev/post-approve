@@ -138,16 +138,15 @@ export const AgendaView = ({
           // Container do Dia
           <div
             key={groupKey}
-            className="bg-white rounded-xl shadow-sm overflow-hidden p-4 sm:p-6"
+            className="bg-white rounded-xl shadow-md overflow-hidden p-4 sm:p-6"
           >
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2 mb-6">
               <Calendar className="w-5 h-5 text-gray-700" />
               <h3 className="text-lg font-bold text-gray-900">
                 {translateStatus(groupKey)}
               </h3>
             </div>
-            {/* Lista de Posts para este dia */}
-            <div className="space-y-4">
+            <div className="space-y-6">
               {posts.map((group) => {
                 const firstPost = group.posts[0];
                 const changeRequest =
@@ -161,7 +160,7 @@ export const AgendaView = ({
                 return (
                   <div
                     key={group.id}
-                    className="border border-gray-100 rounded-lg overflow-hidden mb-4"
+                    className="border border-gray-200 rounded-xl overflow-hidden shadow-sm"
                   >
                     {group.images && group.images.length > 0 && (
                       <PostCarousel
@@ -171,22 +170,20 @@ export const AgendaView = ({
                       />
                     )}
 
-                    <div className="p-1 space-y-5">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            {getStatusBadge(group.status)}
-                            <span className="text-sm text-gray-600">
-                              {translatePostType(firstPost.post_type)}
-                            </span>
-                          </div>
+                    <div className="p-4 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          {getStatusBadge(group.status)}
+                          <span className="text-sm text-gray-600 font-medium">
+                            {translatePostType(firstPost.post_type)}
+                          </span>
                         </div>
                         {/* Tags de Cliente */}
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1 justify-end">
                           {group.clients.map((client) => (
                             <span
                               key={client.id}
-                              className="flex items-center gap-1 px-1 py-0.5 rounded-full text-[0.6rem] font-medium"
+                              className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
                               style={{
                                 backgroundColor: `${
                                   client.color || "#6b7280"
@@ -198,10 +195,10 @@ export const AgendaView = ({
                                 <img
                                   src={client.avatar_url}
                                   alt={client.name}
-                                  className="w-3 h-3 rounded-full object-cover"
+                                  className="w-4 h-4 rounded-full object-cover"
                                 />
                               ) : (
-                                <User className="w-2.5 h-2.5" />
+                                <User className="w-3 h-3" />
                               )}
                               {client.display_name || client.name}
                             </span>
@@ -211,15 +208,15 @@ export const AgendaView = ({
 
                       {/* Legenda Base e Variações */}
                       <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        <p className="text-sm text-gray-800 whitespace-pre-wrap font-medium">
                           {group.baseCaption || (
-                            <span className="italic">Sem legenda.</span>
+                            <span className="italic text-gray-500">Sem legenda.</span>
                           )}
                         </p>
                         {group.captionVariations.size > 1 && (
-                          <div className="border-t border-gray-200 pt-3">
+                          <div className="border-t border-gray-200 pt-3 mt-3">
                             <h4 className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1.5">
-                              <MessageSquareDiff className="w-4 h-4" />
+                              <MessageSquareDiff className="w-4 h-4 text-gray-500" />
                               Variações de Legenda:
                             </h4>
                             <div className="space-y-2">
@@ -247,18 +244,18 @@ export const AgendaView = ({
 
                       {(group.status === "pending" ||
                         group.status === "change_requested") && (
-                        <div className="flex gap-3">
+                        <div className="flex flex-col sm:flex-row gap-3 pt-2">
                           <button
                             onClick={() => onApprove(group)}
                             disabled={loading}
-                            className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white px-2 rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+                            className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <CheckCircle2 className="w-5 h-5" />
                             Aprovar
                           </button>
                           <button
                             onClick={() => onChangeRequest(group)}
-                            className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white px-2 rounded-lg font-medium hover:bg-gray-800 transition-colors"
+                            className="flex-1 flex items-center justify-center gap-2 bg-gray-900 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-800 transition-colors"
                           >
                             <MessageSquare className="w-5 h-5" />
                             Solicitar alteração
@@ -267,12 +264,12 @@ export const AgendaView = ({
                       )}
 
                       {group.status === "change_requested" && changeRequest && (
-                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                          <div className="flex items-start gap-2">
+                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mt-4">
+                          <div className="flex items-start gap-3">
                             <MessageSquare className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
                             <div className="flex-1">
-                              <p className="text-sm font-medium text-orange-900 mb-2">
-                                Sua Solicitação de Alteração
+                              <p className="text-sm font-semibold text-orange-900 mb-1">
+                                Sua Solicitação de Alteração:
                               </p>
                               <p className="text-sm text-orange-700">
                                 {changeRequest.message}
