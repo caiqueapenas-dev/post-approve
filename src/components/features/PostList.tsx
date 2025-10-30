@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Post, Client } from "../../lib/supabase";
 import { usePosts, useDeletePost } from "../../hooks/usePosts";
@@ -18,12 +17,12 @@ export const PostList = ({ refresh }: { refresh: number }) => {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
   const [filter, setFilter] = useState<
-    "all" |
-    "pending" |
-    "change_requested" |
-    "approved" |
-    "agendado" |
-    "published"
+    | "all"
+    | "pending"
+    | "change_requested"
+    | "approved"
+    | "agendado"
+    | "published"
   >("all");
 
   const { data: posts, isLoading } = usePosts(selectedClientId, filter);

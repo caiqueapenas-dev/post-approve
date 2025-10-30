@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { Client } from "../../lib/supabase";
 import {
@@ -453,7 +452,9 @@ export const ClientManager = () => {
                   disabled={updateClientMutation.isLoading}
                   className="flex-1 px-4 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
-                  {updateClientMutation.isLoading ? "Salvando..." : "Salvar Alterações"}
+                  {updateClientMutation.isLoading
+                    ? "Salvando..."
+                    : "Salvar Alterações"}
                 </button>
               </div>
             </form>

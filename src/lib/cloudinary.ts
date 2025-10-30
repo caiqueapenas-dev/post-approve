@@ -3,9 +3,12 @@ import config from "./config";
 const CLOUDINARY_CLOUD_NAME = config.cloudinary.cloudName;
 const CLOUDINARY_UPLOAD_PRESET = config.cloudinary.uploadPreset;
 
-
 export class CloudinaryUploadError extends Error {
-  constructor(message: string, public status: number, public statusText: string) {
+  constructor(
+    message: string,
+    public status: number,
+    public statusText: string
+  ) {
     super(message);
     this.name = "CloudinaryUploadError";
   }

@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, Post } from "../lib/supabase";
 
@@ -51,10 +50,10 @@ const deletePost = async (id: string) => {
 export const useDeletePost = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({ 
+  return useMutation({
     mutationFn: deletePost,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["posts"]});
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });
 };
