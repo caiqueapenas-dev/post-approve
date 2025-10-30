@@ -1,12 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { supabase, Client, Post, PostStatus } from "../lib/supabase";
-import {
-  getTodayRange,
-  getThisWeekRange,
-  getThisMonthRange,
-  getNextMonthRange,
-  formatDateForInput,
-} from "../lib/dateUtils";
+import { supabase } from "../../lib/supabase";
+import { getWeekRangeText } from "../../lib/dateUtils";
 import {
   BarChart,
   Loader2,

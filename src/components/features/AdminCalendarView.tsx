@@ -1,18 +1,8 @@
 import { useState, useEffect } from "react";
-import { supabase, Post, Client, PostType, PostStatus } from "../lib/supabase";
-import { CalendarView } from "./CalendarView";
-import {
-  User,
-  ImageIcon,
-  ListFilter,
-  ChevronsUpDown,
-  Clock,
-  AlertCircle,
-  CheckCircle2,
-  Calendar as CalendarIcon, // Renomeia para evitar conflito
-} from "lucide-react";
+import { supabase, Post } from "../../lib/supabase";
+import { CalendarView } from "../ui/CalendarView";
 import { PostEditor } from "./PostEditor";
-import { getStatusBadgeClasses } from "../lib/utils"; // Importa a nova função
+import { getStatusBadgeClasses } from "../../lib/utils"; // Importa a nova função
 
 export const AdminCalendarView = ({
   showTitle = true,

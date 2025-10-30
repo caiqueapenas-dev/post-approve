@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { supabase, Client, PostType, CropFormat, Post } from "../lib/supabase"; // Adicionado Post
-import { uploadToCloudinary } from "../lib/cloudinary";
-import { ImageCropper } from "./ImageCropper";
+import { supabase, Post, Client, PostType } from "../../lib/supabase";
+import { uploadToCloudinary } from "../../lib/cloudinary";
+import { ImageCropper } from "../ui/ImageCropper";
 import {
   Plus,
   X,
@@ -22,7 +22,7 @@ import {
   Check, // Adiciona o ícone de Check
 } from "lucide-react";
 // Removido import duplicado de PostImage e Post
-import { isMediaVideo } from "../lib/utils";
+import { isMediaVideo } from "../../lib/utils";
 
 // Corrigido tipo ImageData
 export type ImageData = {

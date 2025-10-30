@@ -1,5 +1,15 @@
-const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+import config from "./config";
+
+const CLOUDINARY_CLOUD_NAME = config.cloudinary.cloudName;
+const CLOUDINARY_UPLOAD_PRESET = config.cloudinary.uploadPreset;
+
+
+export class CloudinaryUploadError extends Error {
+  constructor(message: string, public status: number, public statusText: string) {
+    super(message);
+    this.name = "CloudinaryUploadError";
+  }
+}
 
 export const uploadToCloudinary = async (
   file: File
@@ -22,7 +32,11 @@ export const uploadToCloudinary = async (
   if (!response.ok) {
     const errorData = await response.json();
     console.error("Cloudinary upload error:", errorData);
-    throw new Error("Failed to upload file to Cloudinary");
+    throw new CloudinaryUploadError(
+      `Failed to upload file to Cloudinary: ${errorData.error.message}`,
+      response.status,
+      response.statusText
+    );
   }
 
   const data = await response.json();

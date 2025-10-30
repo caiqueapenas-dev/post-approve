@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase, Post, PostStatus } from "../lib/supabase";
+import { supabase, Post, ChangeRequest } from "../../lib/supabase";
 import {
   X,
   Calendar,

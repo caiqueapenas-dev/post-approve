@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "./Router";
+import { useParams } from "react-router-dom";
 import {
   supabase,
   Post,
@@ -7,9 +7,9 @@ import {
   PostImage,
   ChangeRequest,
 } from "../lib/supabase";
-import { PostCarousel } from "./PostCarousel";
-import { CalendarView } from "./CalendarView";
-import { AgendaView } from "./AgendaView"; // Importa a nova AgendaView
+import { PostCarousel } from "../components/features/PostCarousel";
+import { CalendarView } from "../components/ui/CalendarView";
+import { AgendaView } from "../components/ui/AgendaView"; // Importa a nova AgendaView
 import {
   CheckCircle2,
   MessageSquare,

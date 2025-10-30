@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Post, Client } from "../lib/supabase"; // Correção 1: Adicionado Client
+import { Post, Client } from "../../lib/supabase"; // Correção 1: Adicionado Client
 import {
   ChevronLeft,
   ChevronRight,
@@ -9,7 +9,7 @@ import {
   Calendar,
   User, // Adicionado Ícone User
 } from "lucide-react";
-import { getStatusBadgeClasses } from "../lib/utils";
+import { getStatusBadgeClasses } from "../../lib/utils";
 
 // Helper para determinar a cor do texto (preto ou branco) com base na cor de fundo
 const getTextColorForBackground = (hexColor: string | null): string => {

@@ -1,6 +1,12 @@
-import { useState, useEffect, useRef } from "react";
-import { supabase, Client } from "../lib/supabase";
-import { uploadToCloudinary } from "../lib/cloudinary";
+
+import { useState, useRef } from "react";
+import { Client } from "../../lib/supabase";
+import {
+  useClients,
+  useCreateClient,
+  useUpdateClient,
+  useDeleteClient,
+} from "../../hooks/useClients";
 import {
   Plus,
   Users,
@@ -10,14 +16,17 @@ import {
   Image as ImageIcon,
   X,
   Calendar,
-  ClipboardList, // Adiciona o ícone para a cota
+  ClipboardList,
 } from "lucide-react";
 
 export const ClientManager = () => {
-  const [clients, setClients] = useState<Client[]>([]);
+  const { data: clients, isLoading } = useClients();
+  const createClientMutation = useCreateClient();
+  const updateClientMutation = useUpdateClient();
+  const deleteClientMutation = useDeleteClient();
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState<Client | null>(null);
-  const [loading, setLoading] = useState(false);
 
   // Estados para criação
   const [newClientName, setNewClientName] = useState("");
@@ -36,19 +45,6 @@ export const ClientManager = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editIsHidden, setEditIsHidden] = useState(false); // Estado para ocultar
 
-  useEffect(() => {
-    fetchClients();
-  }, []);
-
-  const fetchClients = async () => {
-    const { data } = await supabase
-      .from("clients")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (data) setClients(data);
-  };
-
   const generateUniqueId = () => {
     return (
       Math.random().toString(36).substring(2, 15) +
@@ -58,26 +54,12 @@ export const ClientManager = () => {
 
   const createClient = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
-    try {
-      const { error } = await supabase.from("clients").insert([
-        {
-          name: newClientName,
-          unique_link_id: generateUniqueId(),
-        },
-      ]);
-
-      if (error) throw error;
-
-      setNewClientName("");
-      setShowCreateModal(false);
-      fetchClients();
-    } catch (error) {
-      console.error("Error creating client:", error);
-    } finally {
-      setLoading(false);
-    }
+    await createClientMutation.mutateAsync({
+      name: newClientName,
+      unique_link_id: generateUniqueId(),
+    });
+    setNewClientName("");
+    setShowCreateModal(false);
   };
 
   const handleOpenEditModal = (client: Client) => {
@@ -105,50 +87,27 @@ export const ClientManager = () => {
     e.preventDefault();
     if (!showEditModal) return;
 
-    setLoading(true);
+    await updateClientMutation.mutateAsync({
+      id: showEditModal.id,
+      name: editName,
+      display_name: editDisplayName || editName, // Default para o nome interno
+      avatar: editAvatar,
+      avatar_url: editAvatarPreview,
+      report_link_url: editReportLink || null,
+      meta_calendar_url: editMetaCalendarLink || null,
+      color: editColor,
+      weekly_post_quota: editWeeklyQuota, // Atualiza a cota
+      is_hidden: editIsHidden, // Atualiza o status de oculto
+    });
 
-    try {
-      let avatarUrl = showEditModal.avatar_url;
-
-      if (editAvatar) {
-        const { url } = await uploadToCloudinary(editAvatar);
-        avatarUrl = url;
-      } else if (editAvatarPreview === null) {
-        // Se a preview foi removida e não há avatar novo, remove do banco
-        avatarUrl = null;
-      }
-
-      const { error } = await supabase
-        .from("clients")
-        .update({
-          name: editName,
-          display_name: editDisplayName || editName, // Default para o nome interno
-          avatar_url: avatarUrl,
-          report_link_url: editReportLink || null,
-          meta_calendar_url: editMetaCalendarLink || null,
-          color: editColor,
-          weekly_post_quota: editWeeklyQuota, // Atualiza a cota
-          is_hidden: editIsHidden, // Atualiza o status de oculto
-        })
-        .eq("id", showEditModal.id);
-
-      if (error) throw error;
-
-      setShowEditModal(null);
-      fetchClients();
-    } catch (error) {
-      console.error("Error updating client:", error);
-    } finally {
-      setLoading(false);
-    }
+    setShowEditModal(null);
   };
 
   const deleteClient = async (id: string) => {
     if (!confirm("Are you sure? This will delete all posts for this client."))
       return;
 
-    await supabase.from("clients").delete().eq("id", id);
-    fetchClients();
+    await deleteClientMutation.mutateAsync(id);
   };
 
   const copyLink = (uniqueLinkId: string) => {
@@ -173,7 +132,8 @@ export const ClientManager = () => {
       </div>
 
       <div className="grid gap-4">
-        {clients.map((client) => (
+        {isLoading && <div>Loading...</div>}
+        {clients?.map((client) => (
           <button
             key={client.id}
             onClick={() => handleOpenEditModal(client)}
@@ -234,7 +194,7 @@ export const ClientManager = () => {
           </button>
         ))}
 
-        {clients.length === 0 && (
+        {clients?.length === 0 && !isLoading && (
           <div className="text-center py-12 text-gray-500">
             Nenhum cliente ainda. Crie seu primeiro cliente para começar.
           </div>
@@ -278,10 +238,10 @@ export const ClientManager = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={createClientMutation.isLoading}
                   className="flex-1 px-4 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
-                  {loading ? "Criando..." : "Criar"}
+                  {createClientMutation.isLoading ? "Criando..." : "Criar"}
                 </button>
               </div>
             </form>
@@ -481,8 +441,6 @@ export const ClientManager = () => {
               </div>
 
               <div className="flex gap-3">
-                {" "}
-                {/* Adiciona a chave de fechamento '>' */}
                 <button
                   type="button"
                   onClick={() => setShowEditModal(null)}
@@ -492,10 +450,10 @@ export const ClientManager = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={updateClientMutation.isLoading}
                   className="flex-1 px-4 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
-                  {loading ? "Salvando..." : "Salvar Alterações"}
+                  {updateClientMutation.isLoading ? "Salvando..." : "Salvar Alterações"}
                 </button>
               </div>
             </form>

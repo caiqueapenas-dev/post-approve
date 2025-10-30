@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { ClientManager } from "./ClientManager";
-import { PostCreator, ImageData } from "./PostCreator";
-import { PostList } from "./PostList";
-import { AdminCalendarView } from "./AdminCalendarView";
+import { ClientManager } from "../components/features/ClientManager";
+import { PostCreator, ImageData } from "../components/features/PostCreator";
+import { PostList } from "../components/features/PostList";
+import { AdminCalendarView } from "../components/features/AdminCalendarView";
 import {
   LogOut,
   Users,
@@ -12,8 +12,8 @@ import {
   Plus,
   LayoutDashboard,
 } from "lucide-react";
-import { AdminAnalytics } from "./AdminAnalytics";
-import { PostPreviewer } from "./PostPreviewer";
+import { AdminAnalytics } from "../components/features/AdminAnalytics";
+import { PostPreviewer } from "../components/features/PostPreviewer";
 import { PostType } from "../lib/supabase";
 
 type DraftData = {

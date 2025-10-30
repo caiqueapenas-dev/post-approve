@@ -1,5 +1,8 @@
-import { useState, useEffect } from "react";
-import { supabase, Post, Client } from "../lib/supabase";
+
+import { useState } from "react";
+import { Post, Client } from "../../lib/supabase";
+import { usePosts, useDeletePost } from "../../hooks/usePosts";
+import { useClients } from "../../hooks/useClients";
 import {
   Calendar,
   MessageSquare,
@@ -9,21 +12,23 @@ import {
   Trash2,
 } from "lucide-react";
 import { PostEditor } from "./PostEditor";
-import { getStatusBadgeClasses } from "../lib/utils"; // Importa a nova função
+import { getStatusBadgeClasses } from "../../lib/utils";
 
 export const PostList = ({ refresh }: { refresh: number }) => {
-  const [posts, setPosts] = useState<Post[]>([]);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  const [clients, setClients] = useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
   const [filter, setFilter] = useState<
-    | "all"
-    | "pending"
-    | "change_requested"
-    | "approved"
-    | "agendado"
-    | "published"
+    "all" |
+    "pending" |
+    "change_requested" |
+    "approved" |
+    "agendado" |
+    "published"
   >("all");
+
+  const { data: posts, isLoading } = usePosts(selectedClientId, filter);
+  const { data: clients } = useClients();
+  const deletePostMutation = useDeletePost();
 
   const translateStatus = (
     status:
@@ -52,53 +57,6 @@ export const PostList = ({ refresh }: { refresh: number }) => {
     }
   };
 
-  useEffect(() => {
-    const fetchClients = async () => {
-      const { data } = await supabase.from("clients").select("*").order("name");
-      if (data) setClients(data);
-    };
-    fetchClients();
-    fetchPosts();
-  }, [refresh]); // Log para verificar se fetchClients é chamado
-
-  console.log("PostList: Renderizando ou Atualizando. Refresh:", refresh); // Log de renderização/refresh
-
-  const fetchPosts = async () => {
-    console.log(
-      `PostList: Iniciando fetchPosts. ClientId: ${selectedClientId}, Filter: ${filter}`
-    ); // Log inicial fetchPosts
-    let query = supabase
-      .from("posts")
-      .select(
-        `
-        *,
-        client:clients(*),
-        images:post_images(*),
-        change_requests(*)
-      `
-      )
-      .order("scheduled_date", { ascending: true });
-
-    if (selectedClientId !== "all") {
-      query = query.eq("client_id", selectedClientId);
-    }
-    if (filter !== "all") {
-      query = query.eq("status", filter);
-    }
-
-    const { data, error } = await query;
-    if (error) {
-      console.error("PostList: Erro ao buscar posts:", error); // Log de erro
-    } else if (data) {
-      console.log("PostList: Posts buscados:", data); // Log dos dados
-      setPosts(data as any);
-    } else {
-      console.log("PostList: Nenhum post encontrado para os filtros."); // Log se não houver dados
-      setPosts([]); // Limpa os posts se nada for retornado
-    }
-    console.log("PostList: fetchPosts concluído."); // Log final fetchPosts
-  };
-
   const translatePostType = (type: string) => {
     switch (type) {
       case "feed":
@@ -114,17 +72,10 @@ export const PostList = ({ refresh }: { refresh: number }) => {
     }
   };
 
-  useEffect(() => {
-    fetchPosts();
-  }, [filter, selectedClientId]);
-
   const deletePost = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este post?")) return;
-    await supabase.from("posts").delete().eq("id", id);
-    fetchPosts();
+    await deletePostMutation.mutateAsync(id);
   };
-
-  // getStatusIcon não é mais necessário
 
   const formatDate = (date: string) => {
     const d = new Date(date);
@@ -166,7 +117,7 @@ export const PostList = ({ refresh }: { refresh: number }) => {
           className="p-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-gray-900 min-w-[150px]"
         >
           <option value="all">Todos os Clientes</option>
-          {clients.map((client) => (
+          {clients?.map((client) => (
             <option key={client.id} value={client.id}>
               {client.name}
             </option>
@@ -199,7 +150,8 @@ export const PostList = ({ refresh }: { refresh: number }) => {
       </div>
 
       <div className="space-y-4">
-        {posts.map((post) => {
+        {isLoading && <div>Loading...</div>}
+        {posts?.map((post) => {
           const dateInfo = formatDate(post.scheduled_date);
           return (
             <div
@@ -314,7 +266,7 @@ export const PostList = ({ refresh }: { refresh: number }) => {
           );
         })}
 
-        {posts.length === 0 && (
+        {posts?.length === 0 && !isLoading && (
           <div className="text-center py-12 text-gray-500">
             Nenhum post encontrado para este filtro.
           </div>
@@ -327,7 +279,6 @@ export const PostList = ({ refresh }: { refresh: number }) => {
           onClose={() => setSelectedPost(null)}
           onSuccess={() => {
             setSelectedPost(null);
-            fetchPosts();
           }}
         />
       )}

@@ -6,8 +6,8 @@ import {
   User,
   MessageSquareDiff,
 } from "lucide-react";
-import { PostCarousel } from "./PostCarousel";
-import { downloadMedia, getStatusBadgeClasses } from "../lib/utils";
+import { PostCarousel } from "../features/PostCarousel";
+import { getStatusBadgeClasses } from "../../lib/utils";
 
 // Copiado de ClientPreview
 type GroupedPost = {

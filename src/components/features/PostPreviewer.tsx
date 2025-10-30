@@ -1,7 +1,7 @@
 import { PostImage, PostType, CropFormat } from "../lib/supabase";
 import { PostCarousel } from "./PostCarousel";
 import { ImageData } from "./PostCreator";
-import { isMediaVideo } from "../lib/utils";
+import { isMediaVideo } from "../../lib/utils";
 
 type PostPreviewerProps = {
   images: ImageData[];
