@@ -26,11 +26,6 @@ export const PostEditor = ({ post, onClose, onSuccess }: PostEditorProps) => {
   const [status, setStatus] = useState<PostStatus>(post.status);
   const [loading, setLoading] = useState(false);
 
-  const lastChangeRequest =
-    post.change_requests && post.change_requests.length > 0
-      ? post.change_requests[post.change_requests.length - 1]
-      : null;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -46,16 +41,6 @@ export const PostEditor = ({ post, onClose, onSuccess }: PostEditorProps) => {
         .eq("id", post.id);
 
       if (error) throw error;
-
-      // Se o status foi alterado para 'pendente' ou 'aprovado' (saindo de 'change_requested'),
-      // limpamos as solicitações antigas.
-      if (
-        post.status === "change_requested" &&
-        status !== "change_requested" &&
-        lastChangeRequest
-      ) {
-        await supabase.from("change_requests").delete().eq("post_id", post.id);
-      }
 
       onSuccess();
     } catch (error) {
@@ -136,18 +121,58 @@ export const PostEditor = ({ post, onClose, onSuccess }: PostEditorProps) => {
               </button>
             </div>
 
-            {lastChangeRequest && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <div className="flex items-start gap-2">
-                  <MessageSquare className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-orange-900 mb-2 capitalize">
-                      Solicitação do Cliente ({lastChangeRequest.request_type})
-                    </p>
-                    <p className="text-sm text-orange-700">
-                      {lastChangeRequest.message}
-                    </p>
-                  </div>
+            {/* Histórico de Solicitações */}
+            {post.change_requests && post.change_requests.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-gray-700">
+                  Histórico de Alterações ({post.change_requests.length})
+                </h4>
+                <div className="space-y-3 max-h-40 overflow-y-auto pr-2 rounded-lg bg-gray-50 p-3 border border-gray-200">
+                  {[...post.change_requests] // Clona para não mutar o original
+                    .sort(
+                      (a, b) =>
+                        new Date(b.created_at).getTime() -
+                        new Date(a.created_at).getTime()
+                    ) // Ordena: mais recente primeiro
+                    .map((request, index) => (
+                      <div
+                        key={request.id}
+                        className={`bg-white border rounded-lg p-3 ${
+                          index === 0
+                            ? "border-orange-300 shadow-sm" // Destaque para o mais recente
+                            : "border-gray-200"
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <MessageSquare
+                            className={`w-4 h-4 mt-1 flex-shrink-0 ${
+                              index === 0 ? "text-orange-600" : "text-gray-500"
+                            }`}
+                          />
+                          <div className="flex-1">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-xs font-semibold uppercase text-orange-800 bg-orange-100 px-2 py-0.5 rounded">
+                                {request.request_type}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {new Date(request.created_at).toLocaleString(
+                                  "pt-BR",
+                                  {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700">
+                              {request.message}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}

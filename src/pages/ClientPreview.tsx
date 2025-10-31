@@ -340,9 +340,6 @@ export const ClientPreview = () => {
       message: changeMessage,
     }));
 
-    // Limpa solicitações antigas PRIMEIRO
-    await supabase.from("change_requests").delete().in("post_id", postIds);
-
     // Insere as novas
     await supabase.from("change_requests").insert(changeRequests);
 

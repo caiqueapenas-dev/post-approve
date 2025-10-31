@@ -142,6 +142,11 @@ CREATE POLICY "Admin can delete clients"
   TO authenticated
   USING (true);
 
+CREATE POLICY "Public can view clients"
+  ON clients FOR SELECT
+  TO anon
+  USING (true);
+
 -- RLS Policies for posts table
 CREATE POLICY "Admin can view all posts"
   ON posts FOR SELECT
@@ -299,3 +304,77 @@ BEGIN
   AND scheduled_date <= now();
 END;
 $$ LANGUAGE plpgsql;
+
+-- 1) Tabela de histórico para change_requests
+CREATE TABLE IF NOT EXISTS change_requests_history (
+  history_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_id uuid,                        -- referência para change_requests.id (pode ser NULL para registros históricos sem origem)
+  post_id uuid,
+  request_type text,
+  message text,
+  created_at timestamptz DEFAULT now(),   -- quando este histórico foi gravado
+  action text,                            -- 'insert' | 'update_before' | 'update_after' | 'delete'
+  metadata jsonb                          -- armazena todo o registro OLD/NEW como JSON para maior compatibilidade
+);
+
+CREATE INDEX IF NOT EXISTS idx_change_requests_history_request_id ON change_requests_history(request_id);
+CREATE INDEX IF NOT EXISTS idx_change_requests_history_post_id ON change_requests_history(post_id);
+
+-- 2) Função trigger corrigida que usa to_jsonb(NEW/OLD)
+CREATE OR REPLACE FUNCTION change_requests_record_history()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO change_requests_history (
+      request_id, post_id, request_type, message, created_at, action, metadata
+    ) VALUES (
+      NEW.id, NEW.post_id, NEW.request_type, NEW.message, now(), 'insert', to_jsonb(NEW)
+    );
+    RETURN NEW;
+
+  ELSIF TG_OP = 'UPDATE' THEN
+    -- registra o estado antigo antes de ser sobrescrito
+    INSERT INTO change_requests_history (
+      request_id, post_id, request_type, message, created_at, action, metadata
+    ) VALUES (
+      OLD.id, OLD.post_id, OLD.request_type, OLD.message, now(), 'update_before', to_jsonb(OLD)
+    );
+
+    -- registra o novo estado após a atualização
+    INSERT INTO change_requests_history (
+      request_id, post_id, request_type, message, created_at, action, metadata
+    ) VALUES (
+      NEW.id, NEW.post_id, NEW.request_type, NEW.message, now(), 'update_after', to_jsonb(NEW)
+    );
+
+    RETURN NEW;
+
+  ELSIF TG_OP = 'DELETE' THEN
+    INSERT INTO change_requests_history (
+      request_id, post_id, request_type, message, created_at, action, metadata
+    ) VALUES (
+      OLD.id, OLD.post_id, OLD.request_type, OLD.message, now(), 'delete', to_jsonb(OLD)
+    );
+    RETURN OLD;
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+-- 3) Trigger que anexa a função à tabela change_requests
+DROP TRIGGER IF EXISTS trg_change_requests_history ON change_requests;
+
+CREATE TRIGGER trg_change_requests_history
+  AFTER INSERT OR UPDATE OR DELETE ON change_requests
+  FOR EACH ROW
+  EXECUTE FUNCTION change_requests_record_history();
+
+-- 4) Recomendações de permissão (exemplo)
+-- Revogar EXECUTE de public em caso de necessidade (ajuste conforme sua política)
+REVOKE EXECUTE ON FUNCTION change_requests_record_history() FROM public;
+
+-- 5) (Opcional) Se quiser gravar somente uma entrada por UPDATE (apenas 'update_before'), altere a função acima — por enquanto ela grava before+after.
