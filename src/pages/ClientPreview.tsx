@@ -7,9 +7,6 @@ import { AgendaView } from "../components/ui/AgendaView"; // Importa a nova Agen
 import {
   CheckCircle2,
   MessageSquare,
-  Calendar,
-  AlertCircle,
-  Clock,
   User,
   ExternalLink,
   Loader2, // Adiciona o ícone de carregamento
@@ -549,6 +546,7 @@ export const ClientPreview = () => {
               setShowChangeRequest(true);
             }}
             onDownload={handleDownload}
+            groupBy="status"
           />
         )}
       </div>

@@ -12,6 +12,7 @@ import {
   Plus,
   LayoutDashboard,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AdminAnalytics } from "../components/features/AdminAnalytics";
 import { PostPreviewer } from "../components/features/PostPreviewer";
 import { PostType } from "../lib/supabase";
@@ -27,7 +28,7 @@ export const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState<
     "dashboard" | "create" | "posts" | "clients" | "calendar"
   >("dashboard");
-  const [refreshPosts, setRefreshPosts] = useState(0);
+  const queryClient = useQueryClient();
   const [showSplitCalendar, setShowSplitCalendar] = useState(true);
   const [showPreviewColumn, setShowPreviewColumn] = useState(true);
   const [draftData, setDraftData] = useState<DraftData>({
@@ -140,7 +141,7 @@ export const AdminDashboard = () => {
             >
               <PostCreator
                 onSuccess={() => {
-                  setRefreshPosts((prev) => prev + 1);
+                  queryClient.invalidateQueries({ queryKey: ["posts"] });
                   setDraftData({
                     images: [],
                     caption: "",
